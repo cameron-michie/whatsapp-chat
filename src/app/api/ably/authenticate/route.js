@@ -19,16 +19,16 @@ const createToken = (clientId, apiKey, claim, capability) => {
 }
 
 const generateCapability = claim => {
-
-  if (claim.isMod) {
-    return { '*': ['*'] };
-  } else {
-    return {
-      'chat:general': ['subscribe', 'publish', 'presence', 'history'],
-      'chat:random': ['subscribe', 'publish', 'presence', 'history'],
-      'chat:announcements': ['subscribe', 'presence', 'history']
-    }
-  }
+  return { '*': ['*'] };
+//   if (claim.isMod) {
+//     return { '*': ['*'] };
+//   } else {
+//     return {
+//       'chat:general': ['subscribe', 'publish', 'presence', 'history'],
+//       'chat:*': ['subscribe', 'publish', 'presence', 'history'],
+//       '*': ['subscribe', 'publish', 'presence', 'history']
+//     }
+//   }
 }
 
 export const GET = async () => {
