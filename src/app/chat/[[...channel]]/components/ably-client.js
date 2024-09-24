@@ -1,22 +1,33 @@
+'use client';
 
-import { Realtime } from "ably";
-import { RoomOptionsDefaults, ChatClient } from '@ably/chat';
-import { ChatClientProvider, ChatRoomProvider } from '@ably/chat/react';
+import * as Ably from "ably";
+import { AblyProvider } from 'ably/react';
+import { ChatClient } from '@ably/chat';
+import { ChatClientProvider } from '@ably/chat/react';
+
+class AblyClientSingleton {
+  static instance = null;
+
+  static getInstance() {
+    if (typeof window === "undefined") return null;
+    if (!AblyClientSingleton.instance) {
+      AblyClientSingleton.instance = new Ably.Realtime({ authUrl: "/api/ably/authenticate" });
+      AblyClientSingleton.instance.connection.on('connected', () => { console.log("Connected to Ably"); });
+    }
+    return AblyClientSingleton.instance;
+  }
+}
 
 const AblyClient = ({ children }) => {
-    const client = new Realtime({
-      authUrl: "/api/ably/authenticate",
-      autoConnect: typeof window !== 'undefined',
-    });
-    const chatClient = new ChatClient(client);
-  
-    return (
+  const client = AblyClientSingleton.getInstance();
+  const chatClient = new ChatClient(client);
+  return (
+    <AblyProvider client={client}>
       <ChatClientProvider client={chatClient}>
-        <ChatRoomProvider id="presence" options={{presence: RoomOptionsDefaults.presence}}>
-         {children}
-        </ChatRoomProvider>
+          {children}
       </ChatClientProvider>
-    );
-}
+    </AblyProvider>
+  );
+};
 
 export default AblyClient;

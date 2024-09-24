@@ -8,7 +8,6 @@ const createToken = (clientId, apiKey, claim, capability) => {
   const token = new SignJWT({
     "x-ably-capability": JSON.stringify(capability),
     "x-ably-clientId": clientId,
-    "ably.channel.*": JSON.stringify(claim)
     // 'ably.limits.publish.perAttachment.maxRate.chat': 0.1,
   })
     .setProtectedHeader({ kid: appId, alg: "HS256" })
@@ -19,16 +18,7 @@ const createToken = (clientId, apiKey, claim, capability) => {
 }
 
 const generateCapability = claim => {
-  return { '*': ['*'] };
-//   if (claim.isMod) {
-//     return { '*': ['*'] };
-//   } else {
-//     return {
-//       'chat:general': ['subscribe', 'publish', 'presence', 'history'],
-//       'chat:*': ['subscribe', 'publish', 'presence', 'history'],
-//       '*': ['subscribe', 'publish', 'presence', 'history']
-//     }
-//   }
+  return { '*': ['*'], "[chat]*": ["*"] };
 }
 
 export const GET = async () => {
