@@ -20,6 +20,7 @@ const Chat = () => {
   });
 
   const { user } = useUser();
+  const { start: startTyping, stop: stopTyping, currentlyTyping, error } = useTyping();
 
   useEffect(() => {
     let ignore = false;
@@ -78,9 +79,14 @@ const Chat = () => {
         <div ref={scrollRef} />
         <div />
       </div>
+      {currentlyTyping.length > 0 && (
+        <p>Currently typing: {currentlyTyping.join(', ')}</p>  // Display who is typing
+      )}
       <div className="p-5 mt-auto">
         <MessageInput
           onSubmit={handleSendMessage}
+          onTypingStart={startTyping}  // Start typing when the user begins typing
+          onTypingStop={stopTyping}    // Stop typing when the user stops typing
         />
       </div>
     </>

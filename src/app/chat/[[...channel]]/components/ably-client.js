@@ -11,7 +11,10 @@ class AblyClientSingleton {
   static getInstance() {
     if (typeof window === "undefined") return null;
     if (!AblyClientSingleton.instance) {
-      AblyClientSingleton.instance = new Ably.Realtime({ authUrl: "/api/ably/authenticate" });
+      AblyClientSingleton.instance = new Ably.Realtime({ 
+        authUrl: "/api/ably/authenticate",
+        autoConnect: typeof window !== 'undefined'
+       });
       AblyClientSingleton.instance.connection.on('connected', () => { console.log("Connected to Ably"); });
     }
     return AblyClientSingleton.instance;

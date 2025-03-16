@@ -24,7 +24,6 @@ const generateCapability = claim => {
 export const GET = async () => {
 
   const user = await currentUser()
-
   const userClaim = user.publicMetadata
   const userCapability = generateCapability(userClaim)
 
