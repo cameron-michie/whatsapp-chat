@@ -13,7 +13,8 @@ class AblyClientSingleton {
     if (!AblyClientSingleton.instance) {
       AblyClientSingleton.instance = new Ably.Realtime({ 
         authUrl: "/api/ably/authenticate",
-        autoConnect: typeof window !== 'undefined'
+        autoConnect: typeof window !== 'undefined',
+        loglevel: 3
        });
       AblyClientSingleton.instance.connection.on('connected', () => { console.log("Connected to Ably"); });
     }

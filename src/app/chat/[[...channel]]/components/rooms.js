@@ -1,40 +1,49 @@
-import { usePresenceListener, usePresence } from 'ably/react';
+import { usePresenceListener, useChannel } from 'ably/react';
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
-import Link from 'next/link'
-import { clsx } from 'clsx'
+import { usePathname } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import Link from 'next/link';
+import { clsx } from 'clsx';
 
 const Rooms = () => {
 
     const { user } = useUser()    
     const currentPath = usePathname();
-    const {updateStatus} = usePresence('presence', {fullName: user.fullName, avatarUrl: user.avatarUrl, status: 'Present'})
-    const { presenceData } = usePresenceListener('presence');
-    function generateRoomId(userId1, userId2) {
-        const sortedIds = [userId1.slice(5), userId2.slice(5)].sort();
-        return `${sortedIds[0]}x${sortedIds[1]}`;
-    }    
-    
-    const rooms = [
-        {
+    const [rooms, setRooms] = useState([{
           path: '/chat/general',
           label: 'General',
           avatarUrl: 'https://link.assetfile.io/3YmUfatmXGqATIA000502Q/ably-motif-col-rgb.png',
-        },
-        ...(presenceData && presenceData.length > 0
-          ? presenceData
-              .filter((item) => item.clientId !== user.id)
-              .map((item) => ({
-                path: `/chat/${generateRoomId(user.id, item.clientId)}`,
-                label: item.data?.fullName || 'Unknown',
-                avatarUrl: item.data?.avatarUrl || null,
-                status: item.data?.status || 'Away',
-              }))
-          : []),
-      ];
+        }]
+    );
 
+    useEffect(() => {
+      const fetchChannelHistory = async () => {
+          const historyPage = await channel.history({ limit: 20 });      
+      };
+      fetchChannelHistory();
+    }, [channel]);
 
+    // // notifications message data structure
+    // const data = {
+    //    userId: string,
+    //    avatarUrl: string,
+    //    fullName: string
+    // }
+    const { channel } = useChannel('${user.id}:notifications', (message) => {
+      const roomId = generateRoomId(user.userId, )
+      const newRoom = {
+        path: '/chat/'+roomId,
+        label: message.data.fullName,
+        avatarUrl: message.data.avatarUrl,
+      }
+      setRooms((prev) => [...prev, newRoom]);
+    });
+    
+    function generateRoomId(userId1, userId2) {
+        const sortedIds = [userId1.slice(5), userId2.slice(5)].sort();
+        return `${sortedIds[0]}x${sortedIds[1]}`;
+    }
+    
     const createLi = (room) => {
         return (
           <li key={room.path} className="flex items-center space-x-2">
