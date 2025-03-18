@@ -1,15 +1,19 @@
 //chat.js
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useMessages, useRoom, useChatConnection, useTyping } from '@ably/chat/react';
+import { useAbly } from 'ably/react';
+import { useMessages, usePresence, useRoom, useChatConnection, useTyping } from '@ably/chat/react';
 import MessageInput from './message-input';
 import MessageList from './message-list';
 import { useUser } from '@clerk/nextjs';
+import { usePathname } from 'next/navigation'
 
 const Chat = () => {
   const scrollRef = useRef(null);
   const { currentStatus } = useChatConnection();
   const [messages, setMessages] = useState([]);
+  const pathname = usePathname();
+  const ably = useAbly();
   const { send, get, roomStatus } = useMessages({
     listener: (message) => {
       setMessages((prevMessages) => [...prevMessages, message.message]);
@@ -19,10 +23,17 @@ const Chat = () => {
     },
   });
 
+   const { leave, isPresent } = usePresence({
+    enterWithData: { status: 'Online' },
+    leaveWithData: { status: 'Offline' },
+  });
+
   const { user } = useUser();
   const { start: startTyping, stop: stopTyping, currentlyTyping, error } = useTyping();
+  const otherUserId = pathname.split(user.id).join('');
 
   useEffect(() => {
+    
     let ignore = false;
     const fetchHist = async () => {
       if (!ignore) handleGetMessages();
@@ -58,6 +69,12 @@ const Chat = () => {
     get({ limit: 100, direction: 'forwards' })
       .then((histMessages) => {
         const newMessages = histMessages.items;
+
+        if (newMessages.length === 0) {
+          sendNotificationMessage(otherUserId);
+          return; 
+        }
+
         setMessages((prevMessages) => {
           const allMessages = [...prevMessages, ...newMessages];
           const uniqueMessagesMap = new Map();
@@ -70,6 +87,23 @@ const Chat = () => {
       .catch((error) => {
         console.error('Error fetching messages:', error);
       });
+  };
+
+  const sendNotificationMessage = (otherUserId) => {
+    const channel = ably.channels.get(otherUserId + ':notifications');
+    const member =  {
+        userId: user.id,
+        avatarUrl: user.imageUrl,
+        fullName: user.fullName
+      };
+
+    channel.publish('new-chat', member, (err) => {
+      if (err) {
+        console.error('Error publishing message:', err);
+      } else {
+        console.log('Message sent successfully');
+      }
+    });
   };
 
   return (

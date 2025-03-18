@@ -23,7 +23,7 @@ const Page = ({ params }) => {
     <AblyClient>
       <div className="grid grid-cols-4 h-[calc(100vh-72.8px)]">
        <div className="border-r border-gray-200 p-5">
-         <ChannelProvider channelName="${user.id}:notifications" options={{ params: { rewind: '1' } }}>
+         <ChannelProvider channelName={`${user.id}:notifications`} options={{ params: { rewind: '1' } }}>
             <Rooms />
          </ChannelProvider>
         </div>

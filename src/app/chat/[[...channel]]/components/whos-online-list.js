@@ -15,7 +15,6 @@ const WhosOnlineList = () => {
         return `${sortedIds[0]}x${sortedIds[1]}`;
     }    
     
-    console.log("user: ", user)
     const onlineList = [
         ...(presenceData && presenceData.length > 0
           ? presenceData
