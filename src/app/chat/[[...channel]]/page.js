@@ -1,14 +1,24 @@
 'use client';
-import { RoomOptionsDefaults } from '@ably/chat';
-import { ChatRoomProvider } from '@ably/chat/react';
-import { ChannelProvider } from 'ably/react';
 import Chat from './components/chat';
 import AblyClient from './components/ably-client';
 import Rooms from './components/rooms';
 import WhosOnlineList from './components/whos-online-list';
 import { redirect } from 'next/navigation';
-import { useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { ChannelProvider } from 'ably/react';
+import { ChatClient } from '@ably/chat';
+import { ChatClientProvider } from '@ably/chat/react';
+import * as Ably from 'ably';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import 'ably-chat-react-ui-components/dist/style.css';
+import {
+  App,
+  AvatarProvider,
+  ChatSettingsProvider,
+  ThemeProvider,
+} from 'ably-chat-react-ui-components';
 
 const Page = ({ params }) => {
   const channelName = `${params.channel || 'general'}`;
@@ -28,9 +38,7 @@ const Page = ({ params }) => {
          </ChannelProvider>
         </div>
         <div className="col-span-2 flex flex-col min-h-0">
-          <ChatRoomProvider id={channelName} options={RoomOptionsDefaults}>
-            <Chat />
-          </ChatRoomProvider>
+          <Chat roomId={channelName} />
         </div>
         <div className="border-l border-gray-200 p-5">
           {/* Placeholder for other components like WhosOnlineList */}

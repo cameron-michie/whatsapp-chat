@@ -5,30 +5,22 @@ import { AblyProvider } from 'ably/react';
 import { ChatClient } from '@ably/chat';
 import { ChatClientProvider } from '@ably/chat/react';
 
-class AblyClientSingleton {
-  static instance = null;
+const client = new Ably.Realtime({
+  authUrl: "/api/ably/authenticate",
+  autoConnect: typeof window !== 'undefined',
+  loglevel: 3
+});
 
-  static getInstance() {
-    if (typeof window === "undefined") return null;
-    if (!AblyClientSingleton.instance) {
-      AblyClientSingleton.instance = new Ably.Realtime({ 
-        authUrl: "/api/ably/authenticate",
-        autoConnect: typeof window !== 'undefined',
-        loglevel: 3
-       });
-      AblyClientSingleton.instance.connection.on('connected', () => { console.log("Connected to Ably"); });
-    }
-    return AblyClientSingleton.instance;
-  }
-}
-
+ably.connection.on('connected', () => {
+  console.log("Connected to Ably");
+});
+ 
 const AblyClient = ({ children }) => {
-  const client = AblyClientSingleton.getInstance();
   const chatClient = new ChatClient(client);
   return (
     <AblyProvider client={client}>
       <ChatClientProvider client={chatClient}>
-          {children}
+        {children}
       </ChatClientProvider>
     </AblyProvider>
   );

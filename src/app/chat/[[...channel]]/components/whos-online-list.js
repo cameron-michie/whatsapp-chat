@@ -1,4 +1,4 @@
-import { usePresenceListener, usePresence } from 'ably/react';
+import { useChannel } from 'ably/react';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
@@ -8,8 +8,19 @@ import { clsx } from 'clsx'
 const WhosOnlineList = () => {
     const { user } = useUser()    
     const currentPath = usePathname();
-    const {updateStatus} = usePresence('presence', {fullName: user.fullName, avatarUrl: user.imageUrl, status: 'Present'})
-    const { presenceData } = usePresenceListener('presence');
+    const { channel } = useChannel('presence', {fullName: user.fullName, avatarUrl: user.imageUrl, status: 'Present'});
+    const [presenceData, setPresenceData] = useState([]);
+
+    useEffect(() => {
+        const subscription = channel.presence.subscribe((member) => {
+            setPresenceData(channel.presence.get());
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        }
+    }, [channel]);
+    
     function generateRoomId(userId1, userId2) {
         const sortedIds = [userId1.slice(5), userId2.slice(5)].sort();
         return `${sortedIds[0]}x${sortedIds[1]}`;

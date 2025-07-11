@@ -1,60 +1,64 @@
 //chat.js
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import { useAbly } from 'ably/react';
-import { useMessages, usePresence, useRoom, useChatConnection, useTyping } from '@ably/chat/react';
 import MessageInput from './message-input';
 import MessageList from './message-list';
 import { useUser } from '@clerk/nextjs';
 import { usePathname } from 'next/navigation'
+import { ChatContext } from './chat-context';
 
-const Chat = () => {
+const Chat = ({ roomId }) => {
   const scrollRef = useRef(null);
-  const { currentStatus } = useChatConnection();
+  const chat = useContext(ChatContext);
   const [messages, setMessages] = useState([]);
+  const [room, setRoom] = useState(null);
+  const [currentlyTyping, setCurrentlyTyping] = useState([]);
   const pathname = usePathname();
   const ably = useAbly();
-  const { send, get, roomStatus } = useMessages({
-    listener: (message) => {
-      setMessages((prevMessages) => [...prevMessages, message.message]);
-    },
-    onDiscontinuity: (error) => {
-      console.log('Discontinuity detected:', error);
-    },
-  });
-
-   const { leave, isPresent } = usePresence({
-    enterWithData: { status: 'Online' },
-    leaveWithData: { status: 'Offline' },
-  });
-
   const { user } = useUser();
-  const { start: startTyping, stop: stopTyping, currentlyTyping, error } = useTyping();
   const otherUserId = pathname.split(user.id).join('');
 
   useEffect(() => {
-    
-    let ignore = false;
-    const fetchHist = async () => {
-      if (!ignore) handleGetMessages();
+    if (!chat) return;
+
+    const roomInstance = chat.rooms.get({ id: roomId });
+    setRoom(roomInstance);
+
+    const messageCallback = (message) => {
+      setMessages((prevMessages) => [...prevMessages, message.message]);
     };
-    fetchHist();
+
+    const typingCallback = (typingData) => {
+      setCurrentlyTyping(typingData.userIds);
+    };
+
+    roomInstance.messages.subscribe(messageCallback);
+    roomInstance.typing.subscribe(typingCallback);
+
     return () => {
-      ignore = true;
+      roomInstance.messages.unsubscribe(messageCallback);
+      roomInstance.typing.unsubscribe(typingCallback);
     };
-  }, []);
+  }, [chat, roomId]);
+
+  useEffect(() => {
+    if (room) {
+      handleGetMessages();
+    }
+  }, [room]);
 
   useEffect(() => {
     scrollRef.current.scrollIntoView();
   }, [messages.length]);
 
   const handleSendMessage = (text) => {
-    if (roomStatus !== 'attached' || currentStatus !== 'connected') {
-      console.log('Room or connection is not ready. Current roomStatus:', roomStatus, 'Connection status:', currentStatus);
+    if (!room) {
+      console.log('Room is not ready.');
       return;
     }
 
-    send({ text: text, metadata: { avatarUrl: user.imageUrl } })
+    room.messages.send({ text: text, metadata: { avatarUrl: user.imageUrl } })
       .then(() => {
         console.log(`Message sent successfully. ${user.fullName}: ${text}`);
       })
@@ -62,11 +66,12 @@ const Chat = () => {
         console.error('Failed to send message:', error);
       });
     
-    stopTyping();  // Stop typing once the message is sent
+    stopTyping();
   };
 
   const handleGetMessages = () => {
-    get({ limit: 100, direction: 'forwards' })
+    if (!room) return;
+    room.messages.get({ limit: 100, direction: 'forwards' })
       .then((histMessages) => {
         const newMessages = histMessages.items;
 
@@ -106,6 +111,18 @@ const Chat = () => {
     });
   };
 
+  const startTyping = () => {
+    if (room) {
+      room.typing.start();
+    }
+  };
+
+  const stopTyping = () => {
+    if (room) {
+      room.typing.stop();
+    }
+  };
+
   return (
     <>
       <div className="overflow-y-auto p-5">
@@ -114,13 +131,13 @@ const Chat = () => {
         <div />
       </div>
       {currentlyTyping.length > 0 && (
-        <p>Currently typing: {currentlyTyping.join(', ')}</p>  // Display who is typing
+        <p>Currently typing: {currentlyTyping.join(', ')}</p>
       )}
       <div className="p-5 mt-auto">
         <MessageInput
           onSubmit={handleSendMessage}
-          onTypingStart={startTyping}  // Start typing when the user begins typing
-          onTypingStop={stopTyping}    // Stop typing when the user stops typing
+          onTypingStart={startTyping}
+          onTypingStop={stopTyping}
         />
       </div>
     </>
