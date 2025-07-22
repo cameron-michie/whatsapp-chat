@@ -102,6 +102,11 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     initializeLiveObjects();
   }, [channel]);
 
+  useEffect(() => {
+    // Logic for subscribing to chat rooms via pub/sub, and updating liveobject from clientside
+    console.log("Rooms changed!");
+  }, [rooms]);
+
   const handleRoomSelect = useCallback((roomName?: string) => {
     if (roomName) {
       onRoomSelect(roomName);
@@ -136,16 +141,16 @@ export const RoomsList: React.FC<RoomsListProps> = ({
       className="h-full"
       defaultRoomOptions={{
         // Configure Chat SDK room options consistently
-        presence: { 
+        presence: {
           enableEvents: true,
-          subscribe: false 
+          subscribe: false
         },
-        occupancy: { 
+        occupancy: {
           enableEvents: true,
-          subscribe: false 
+          subscribe: false
         },
-        typing: { 
-          timeoutMs: 10000 
+        typing: {
+          timeoutMs: 10000
         },
         // Ensure room gets released properly to avoid conflicts
         release: true

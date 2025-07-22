@@ -44,6 +44,9 @@ const AuthenticatedApp: React.FC = () => {
 
   // Create user ID for LiveObjects channel
   const userId = user?.id || '';
+  
+  // Create client ID for Ably Chat - use fullName
+  const clientId = user?.fullName || userId;
 
   if (!user) {
     return (
@@ -56,6 +59,7 @@ const AuthenticatedApp: React.FC = () => {
   return <AuthenticatedAppContent
     user={user}
     userId={userId}
+    clientId={clientId}
     activeRoomId={activeRoomId}
     handleRoomSelect={handleRoomSelect}
   />;
@@ -65,6 +69,7 @@ const AuthenticatedApp: React.FC = () => {
 interface AuthenticatedAppContentProps {
   user: any;
   userId: string;
+  clientId: string;
   activeRoomId: string | undefined;
   handleRoomSelect: (roomId: string) => void;
 }
@@ -72,6 +77,7 @@ interface AuthenticatedAppContentProps {
 const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
   user,
   userId,
+  clientId,
   activeRoomId,
   handleRoomSelect,
 }) => {
@@ -84,7 +90,7 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
   // Create Ably Realtime client for Chat Window with authenticated clientId
   const ablyClient2 = new Ably.Realtime({
     key: ABLY_API_KEY,
-    clientId: userId,
+    clientId: clientId,
   });
 
   // Create Chat client using the Ably client
@@ -100,7 +106,7 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
         <ChatSettingsProvider>
           <AblyProvider client={ablyClient1}>
             <ChatClientProvider client={chatClient}>
-              <div className="flex h-screen">
+              <div className="flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden h-screen w-full">
                 {/* User Profile Section
                 <div className="absolute top-4 right-4 z-20 flex items-center space-x-3 bg-white shadow-lg rounded-lg px-3 py-2">
                   <img
@@ -114,29 +120,33 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
                 </div>
  */}
 
-                {/* Left Panel - Rooms List */}
-                <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
-                  <RoomsList
-                    userId={userId}
-                    onRoomSelect={handleRoomSelect}
-                    activeRoomId={activeRoomId}
-                  />
-                </ChannelProvider>
+                {/* Sidebar - Rooms List */}
+                <div className="flex-shrink-0 w-1/4 min-w-80 max-w-96">
+                  <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
+                    <RoomsList
+                      userId={userId}
+                      onRoomSelect={handleRoomSelect}
+                      activeRoomId={activeRoomId}
+                    />
+                  </ChannelProvider>
+                </div>
 
-                {/* Center Panel - Chat Window */}
-                <div className="flex-1">
+                {/* Main Content - Chat Window */}
+                <main className="flex-1 overflow-hidden">
                   <Routes>
                     <Route path="/room/:roomId" element={<ChatWindow />} />
                     <Route path="/" element={
-                      <div className="flex-1 flex items-center justify-center h-full bg-gray-50">
-                        <div className="text-center p-8">
-                          <h2 className="text-xl font-semibold text-gray-900 mb-2">Welcome to Chat</h2>
-                          <p className="text-gray-600 mb-6">Select a chat from the sidebar to start messaging.</p>
+                      <div className="flex flex-col h-full">
+                        <div className="flex-1 flex items-center justify-center bg-gray-50">
+                          <div className="text-center p-8">
+                            <h2 className="text-xl font-semibold text-gray-900 mb-2">Welcome to Chat</h2>
+                            <p className="text-gray-600 mb-6">Select a chat from the sidebar to start messaging.</p>
+                          </div>
                         </div>
                       </div>
                     } />
                   </Routes>
-                </div>
+                </main>
               </div>
             </ChatClientProvider>
           </AblyProvider>

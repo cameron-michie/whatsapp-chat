@@ -40,42 +40,40 @@ export const ChatWindow: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 w-full h-full">
-      <ChatRoomProvider
-        key={roomId}
-        name={roomId}
-        attach={true}
-        release={true}
-        options={{
-          occupancy: { enableEvents: true },
+    <ChatRoomProvider
+      key={roomId}
+      name={roomId}
+      attach={true}
+      release={true}
+      options={{
+        occupancy: { enableEvents: true },
+      }}
+    >
+      <ChatWindowUI
+        roomName={roomId}
+        enableTypingIndicators={true}
+        autoEnterPresence={true}
+        windowSize={1000}
+        className="!w-full !max-w-none !min-w-0"
+        style={{ width: '100%', maxWidth: 'none', minWidth: 0 }}
+        errorHandling={{
+          onSendError: (error, text) => {
+            console.error('Send error:', error, text);
+          },
+          onEditError: (error, message) => {
+            console.error('Edit error:', error, message);
+          },
+          onDeleteError: (error, message) => {
+            console.error('Delete error:', error, message);
+          },
+          onAddReactionError: (error, message, emoji) => {
+            console.error('Add reaction error:', error, message, emoji);
+          },
+          onRemoveReactionError: (error, message, emoji) => {
+            console.error('Remove reaction error:', error, message, emoji);
+          },
         }}
-      >
-        <ChatWindowUI
-          roomName={roomId}
-          enableTypingIndicators={true}
-          autoEnterPresence={true}
-          windowSize={100}
-          className="!w-full !max-w-none !min-w-0"
-          // style={{ width: '100%', maxWidth: 'none', minWidth: 0 }}
-          errorHandling={{
-            onSendError: (error, text) => {
-              console.error('Send error:', error, text);
-            },
-            onEditError: (error, message) => {
-              console.error('Edit error:', error, message);
-            },
-            onDeleteError: (error, message) => {
-              console.error('Delete error:', error, message);
-            },
-            onAddReactionError: (error, message, emoji) => {
-              console.error('Add reaction error:', error, message, emoji);
-            },
-            onRemoveReactionError: (error, message, emoji) => {
-              console.error('Remove reaction error:', error, message, emoji);
-            },
-          }}
-        />
-      </ChatRoomProvider>
-    </div>
+      />
+    </ChatRoomProvider>
   );
 };

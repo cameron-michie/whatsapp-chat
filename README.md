@@ -23,6 +23,13 @@ npm run build
 
 Use these curl commands to monitor and manipulate your room list data in real-time:
 
+**Important API Format Notes:**
+- **All operations**: Use `https://main.realtime.ably.net/channels/{channelName}/objects`
+- **GET operations**: Append `/{objectId}` for specific objects
+- **POST operations (create/update)**: Require array format `[{operation, path, data}, ...]`
+- **Object paths**: For nested operations, use dot notation: `"objectId.property"`
+- **Error handling**: Error code 92005 means the object path doesn't exist
+
 ### Environment Setup
 
 ```bash
@@ -37,7 +44,7 @@ export USER_ID="demo-user-abc123"
 
 ```bash
 # Get the entire room list LiveObject
-curl -X GET "https://rest.ably.io/channels/roomslist:$USER_ID/objects/root" \
+curl -X GET "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects/root" \
   -u $ABLY_API_KEY \
   -H "Content-Type: application/json"
 ```
@@ -46,125 +53,120 @@ curl -X GET "https://rest.ably.io/channels/roomslist:$USER_ID/objects/root" \
 
 ```bash
 # Get room list with all nested room data
-curl -X GET "https://rest.ably.io/channels/roomslist:$USER_ID/objects/root?children=true" \
+curl -X GET "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects/root?children=true" \
   -u $ABLY_API_KEY \
   -H "Content-Type: application/json"
 ```
 
-### 3. Create a New DM Room
+### 3. Create a New DM Room - Corrected Format
 
 ```bash
-# Create a new DM room via REST API (using batch operation with LiveCounter)
-curl -X POST "https://rest.ably.io/channels/roomslist:abc/objects" \
+# Create a new DM room via REST API using the correct format
+curl -X POST "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects" \
   -u $ABLY_API_KEY \
   -H "Content-Type: application/json" \
-  -d '{
-        "operation": "MAP_CREATE",
-        "path": "room-john-dm3",
-        "data": {
-          "chatRoomType": { "string": "DM" },
-          "lastMessageSeenCursor": { "string": "" },
-          "latestMessagePreview": { "string": "Hey there! 👋" },
-          "latestMessageSender": { "string": "John Smith" },
-          "latestMessageTimestamp": { "string": "'$(date +%s)000'" },
-          "displayMacroUrl": { "string": "https://api.dicebear.com/7.x/avataaars/svg?seed=John" },
-          "participants": { "string": "'$USER_ID',John_Smith" },
-          "unreadMessageCount": { "number" : 0 }
+  -d '[
+        {
+          "operation": "MAP_CREATE",
+          "path": "room-john-dm3",
+          "data": {
+            "chatRoomType": { "string": "DM" },
+            "lastMessageSeenCursor": { "string": "" },
+            "latestMessagePreview": { "string": "Hey there! 👋" },
+            "latestMessageSender": { "string": "John Smith" },
+            "latestMessageTimestamp": { "string": "'$(date +%s)000'" },
+            "displayMacroUrl": { "string": "https://api.dicebear.com/7.x/avataaars/svg?seed=John" },
+            "participants": { "string": "'$USER_ID',John_Smith" },
+            "unreadMessageCount": { "number" : 0 }
+          }
         }
-      }'
+      ]'
 ```
 
-### 4. Add a Group DM Room
+### 4. Add a Group DM Room - Updated to Use Correct Endpoint
 
 ```bash
-# Create a group DM room (using batch operation with LiveCounter)
-curl -X POST "https://rest.ably.io/channels/roomslist:$USER_ID/objects" \
+# Create a group DM room using the correct endpoint
+curl -X POST "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects" \
   -u $ABLY_API_KEY \
   -H "Content-Type: application/json" \
   -d '[
       {
         "operation": "MAP_CREATE",
-        "path": "room-john-dm2",
+        "path": "room-group-dm",
         "data": {
-          "chatRoomType": { "string": "DM" },
+          "chatRoomType": { "string": "groupDM" },
           "lastMessageSeenCursor": { "string": "" },
-          "latestMessagePreview": { "string": "Hey there! 👋" },
-          "latestMessageSender": { "string": "John Smith" },
+          "latestMessagePreview": { "string": "Great meeting everyone!" },
+          "latestMessageSender": { "string": "Alice Smith" },
           "latestMessageTimestamp": { "string": "'$(date +%s)000'" },
-          "displayMacroUrl": { "string": "https://api.dicebear.com/7.x/avataaars/svg?seed=John" },
-          "participants": { "string": "'$USER_ID',John_Smith" }
+          "displayMacroUrl": { "string": "https://api.dicebear.com/7.x/avataaars/svg?seed=Group" },
+          "participants": { "string": "'$USER_ID',John_Smith,Jane_Doe,Alice_Smith" },
+          "unreadMessageCount": { "number": 3 }
         }
-      },
-      {
-        "operation": "COUNTER_CREATE",
-        "path": "room-john-dm2/unreadMessageCount",
-        "data": { "number": 3 }
       }
     ]'
 ```
 
-### 5. Update Message Preview and Unread Count
+### 5. Update Message Preview and Unread Count (Correct Format)
 
 ```bash
-# Update latest message and increment unread count
-curl -X PATCH "https://rest.ably.io/channels/roomslist:$USER_ID/objects/room-john-dm" \
+# Update latest message and increment unread count using the correct API format
+curl -X POST "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects" \
   -u $ABLY_API_KEY \
   -H "Content-Type: application/json" \
-  -d '{
-    "operations": [
-      {
-        "operation": "MAP_SET",
-        "path": "latestMessagePreview",
-        "data": { "string": "Just sent you the files you needed!" }
-      },
-      {
-        "operation": "MAP_SET", 
-        "path": "latestMessageSender",
-        "data": { "string": "John Smith" }
-      },
-      {
-        "operation": "MAP_SET",
-        "path": "latestMessageTimestamp", 
-        "data": { "string": "'$(date +%s)000'" }
-      },
-      {
-        "operation": "COUNTER_INCREMENT",
-        "path": "unreadMessageCount",
-        "data": { "number": 1 }
-      }
-    ]
-  }'
+  -d '[
+    {
+      "operation": "MAP_SET",
+      "path": "room-john-dm.latestMessagePreview",
+      "data": { "string": "Just sent you the files you needed!" }
+    },
+    {
+      "operation": "MAP_SET", 
+      "path": "room-john-dm.latestMessageSender",
+      "data": { "string": "John Smith" }
+    },
+    {
+      "operation": "MAP_SET",
+      "path": "room-john-dm.latestMessageTimestamp", 
+      "data": { "string": "'$(date +%s)000'" }
+    },
+    {
+      "operation": "COUNTER_INCREMENT",
+      "path": "room-john-dm.unreadMessageCount",
+      "data": { "number": 1 }
+    }
+  ]'
 ```
 
-### 6. Mark Room as Read (Reset Unread Count)
+**Note**: The correct endpoint is `https://main.realtime.ably.net/channels/{channelName}/objects` using POST method with an array of operations. Each operation path must include the object ID prefix (e.g., `"room-john-dm.latestMessagePreview"`). If the object doesn't exist, you'll get error code 92005 and should create it first.
+
+### 6. Mark Room as Read (Reset Unread Count) - Corrected Format
 
 ```bash
-# Reset unread count to 0
-curl -X PATCH "https://rest.ably.io/channels/roomslist:$USER_ID/objects/room-john-dm" \
-  -H "Authorization: Bearer $ABLY_API_KEY" \
+# Reset unread count to 0 using the correct API format
+curl -X POST "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects" \
   -u $ABLY_API_KEY \
   -H "Content-Type: application/json" \
-  -d '{
-    "operations": [
-      {
-        "operation": "COUNTER_SET",
-        "path": "unreadMessageCount",
-        "data": { "number": 0 }
-      },
-      {
-        "operation": "MAP_SET",
-        "path": "lastMessageSeenCursor",
-        "data": { "string": "Just sent you the files you needed!" }
-      }
-    ]
-  }'
+  -d '[
+    {
+      "operation": "COUNTER_SET",
+      "path": "room-john-dm.unreadMessageCount",
+      "data": { "number": 0 }
+    },
+    {
+      "operation": "MAP_SET",
+      "path": "room-john-dm.lastMessageSeenCursor",
+      "data": { "string": "Just sent you the files you needed!" }
+    }
+  ]'
 ```
 
 ### 7. Delete a Room
 
 ```bash
 # Remove a room from the list
-curl -X DELETE "https://rest.ably.io/channels/roomslist:$USER_ID/objects/room-john-dm" \
+curl -X DELETE "https://main.realtime.ably.net/channels/roomslist:$USER_ID/objects/room-john-dm" \
   -u $ABLY_API_KEY \
 ```
 
@@ -172,7 +174,7 @@ curl -X DELETE "https://rest.ably.io/channels/roomslist:$USER_ID/objects/room-jo
 
 ```bash
 # Subscribe to channel events to see real-time changes
-curl -X GET "https://rest.ably.io/channels/roomslist:$USER_ID/messages" \
+curl -X GET "https://main.realtime.ably.net/channels/roomslist:$USER_ID/messages" \
   -u $ABLY_API_KEY \
   -H "Accept: text/event-stream"
 ```
