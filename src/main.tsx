@@ -45,8 +45,9 @@ const AuthenticatedApp: React.FC = () => {
   // Create user ID for LiveObjects channel
   const userId = user?.id || '';
   
-  // Create client ID for Ably Chat - use fullName
-  const clientId = user?.fullName || userId;
+  // Create client ID for Ably Chat - use fullName.userId format
+  const fullName = user?.fullName || 'Unknown User';
+  const clientId = `${fullName.replace(/\s+/g, '_')}.${userId}`;
 
   if (!user) {
     return (

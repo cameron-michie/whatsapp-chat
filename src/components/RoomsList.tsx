@@ -3,6 +3,7 @@ import { useChannel } from 'ably/react';
 import { useUser } from '@clerk/clerk-react';
 import { Sidebar } from '../ably-ui-kits/components/molecules';
 import { formatParticipantNames, formatMessagePreview } from '../utils/roomUtils';
+import { ContactList } from './ContactList';
 
 interface RoomData {
   chatRoomType: 'DM' | 'topic' | 'groupDM';
@@ -130,31 +131,41 @@ export const RoomsList: React.FC<RoomsListProps> = ({
   }
 
   return (
-    <Sidebar
-      rooms={rooms}
-      activeRoomName={activeRoomId}
-      addRoom={handleAddRoom}
-      setActiveRoom={handleRoomSelect}
-      leaveRoom={handleLeaveRoom}
-      userId={userId}
-      userFullName={user?.fullName}
-      className="h-full"
-      defaultRoomOptions={{
-        // Configure Chat SDK room options consistently
-        presence: {
-          enableEvents: true,
-          subscribe: false
-        },
-        occupancy: {
-          enableEvents: true,
-          subscribe: false
-        },
-        typing: {
-          timeoutMs: 10000
-        },
-        // Ensure room gets released properly to avoid conflicts
-        release: true
-      }}
-    />
+    <div className="h-full flex flex-col">
+      {/* Contact List for starting new chats */}
+      <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <ContactList />
+      </div>
+
+      {/* Existing rooms sidebar */}
+      <div className="flex-1 overflow-hidden">
+        <Sidebar
+          rooms={rooms}
+          activeRoomName={activeRoomId}
+          addRoom={handleAddRoom}
+          setActiveRoom={handleRoomSelect}
+          leaveRoom={handleLeaveRoom}
+          userId={userId}
+          userFullName={user?.fullName}
+          className="h-full"
+          defaultRoomOptions={{
+            // Configure Chat SDK room options consistently
+            presence: {
+              enableEvents: true,
+              subscribe: false
+            },
+            occupancy: {
+              enableEvents: true,
+              subscribe: false
+            },
+            typing: {
+              timeoutMs: 10000
+            },
+            // Ensure room gets released properly to avoid conflicts
+            release: true
+          }}
+        />
+      </div>
+    </div>
   );
 };

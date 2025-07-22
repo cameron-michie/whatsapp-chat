@@ -19,8 +19,11 @@ export const handler = async (event) => {
       'commie', 'feminazi', 'libtard', 'conservitard', 'trumptard'
     ];
     
-    // Check for profanity
+    // Check for profanity and censor message preview
     const textLower = text.toLowerCase();
+    let censoredMessageText = text;
+    
+    // First check if message should be rejected for profanity
     for (const word of profanityList) {
       if (textLower.includes(word)) {
         const censoredWord = word.charAt(0) + '*'.repeat(word.length - 1);
@@ -40,8 +43,8 @@ export const handler = async (event) => {
     const recipients = metadata.recipients ? metadata.recipients.split(',') : [];
     
     if (recipients.length > 0) {
-      // Update LiveObjects for each recipient
-      await updateLiveObjectsForRecipients(recipients, room, text, clientId);
+      // Update LiveObjects for each recipient with censored message
+      await updateLiveObjectsForRecipients(recipients, room, censoredMessageText, clientId);
     }
     
     // Accept the message
@@ -69,7 +72,28 @@ export const handler = async (event) => {
 async function updateLiveObjectsForRecipients(recipients, roomId, messageText, senderId) {
   const ABLY_API_KEY = process.env.ABLY_API_KEY;
   const timestamp = Date.now().toString();
-  const messagePreview = messageText.length > 50 ? messageText.substring(0, 47) + '...' : messageText;
+  
+  // Censor profanity in message preview
+  const profanityList = [
+    'fuck', 'shit', 'damn', 'bitch', 'ass', 'hell', 'crap', 'bastard', 
+    'piss', 'slut', 'whore', 'nigger', 'faggot', 'retard', 'cunt', 
+    'dickhead', 'asshole', 'motherfucker', 'cocksucker', 'twat',
+    'prick', 'wanker', 'tosser', 'bollocks', 'bloody', 'bugger',
+    'christ', 'jesus', 'goddamn', 'goddam', 'dammit', 'damnit',
+    'fag', 'dyke', 'homo', 'spic', 'chink', 'kike', 'gook',
+    'wetback', 'raghead', 'towelhead', 'sandnigger', 'nazi',
+    'commie', 'feminazi', 'libtard', 'conservitard', 'trumptard'
+  ];
+  
+  let censoredText = messageText;
+  for (const word of profanityList) {
+    const regex = new RegExp(word, 'gi');
+    censoredText = censoredText.replace(regex, (match) => 
+      match.charAt(0) + '*'.repeat(match.length - 1)
+    );
+  }
+  
+  const messagePreview = censoredText.length > 50 ? censoredText.substring(0, 47) + '...' : censoredText;
   
   for (const recipientId of recipients) {
     try {
