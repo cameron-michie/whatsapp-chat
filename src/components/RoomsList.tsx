@@ -30,6 +30,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   const [isLoading, setIsLoading] = useState(true);
   const { channel } = useChannel(`roomslist:${userId}`);
   const { user } = useUser();
+  const [activeRoomCounter, setActiveRoomCounter] = useState<any>(null);
 
   // Helper function to safely get unread count
   const getUnreadCount = (roomMap: any): number => {
@@ -46,7 +47,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     console.log(`Extracting data for room ${roomId}:`, roomMap);
     console.log('roomMap type:', typeof roomMap);
     console.log('roomMap has get method:', typeof roomMap?.get === 'function');
-    
+
     // Handle both LiveMap objects and plain objects
     const getValue = (key: string) => {
       if (roomMap && typeof roomMap.get === 'function') {
@@ -149,7 +150,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
             roomMap.subscribe((roomUpdate: any) => {
               console.log(`=== ROOM ${roomId} UPDATE ===`);
               console.log('Room update:', roomUpdate);
-              
+
               // Reload all rooms when any individual room updates
               const updatedRooms = loadAllRooms(root);
               console.log('RoomsList: Room updated, reloading all rooms');
@@ -166,6 +167,149 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
 
     initializeLiveObjects();
   }, [channel]);
+
+  // Auto-decrement unread counter for active room
+  useEffect(() => {
+    console.log('=== ACTIVE ROOM COUNTER EFFECT ===');
+    console.log('Channel available:', !!channel);
+    console.log('Active room ID:', activeRoomId);
+
+    if (!channel || !activeRoomId) {
+      console.log('No channel or activeRoomId, clearing counter');
+      setActiveRoomCounter(null);
+      return;
+    }
+
+    const setupActiveRoomCounter = async () => {
+      try {
+        console.log(`=== SETTING UP AUTO-DECREMENT FOR ROOM: ${activeRoomId} ===`);
+
+        const root = await channel.objects.getRoot();
+        console.log('Got root object for active room setup');
+
+        const roomMap = root.get(activeRoomId);
+        console.log('Room map for active room:', !!roomMap);
+
+        if (roomMap) {
+          console.log("roomMap", roomMap);
+          const unreadCounter = roomMap.get('unreadMessageCount');
+          console.log('Unread counter found:', !!unreadCounter);
+          console.log('Counter type:', typeof unreadCounter);
+          console.log('Counter value:', unreadCounter);
+          console.log('Counter constructor:', unreadCounter?.constructor?.name);
+          console.log('Counter has subscribe method:', typeof unreadCounter?.subscribe === 'function');
+          console.log('Counter has value method:', typeof unreadCounter?.value === 'function');
+          console.log('Counter has increment method:', typeof unreadCounter?.increment === 'function');
+          console.log('Available methods on counter:', Object.getOwnPropertyNames(unreadCounter || {}));
+
+          if (unreadCounter && typeof unreadCounter.subscribe === 'function') {
+            const currentValue = unreadCounter.value();
+            console.log(`Setting up auto-decrement for active room: ${activeRoomId}`);
+            console.log(`Current counter value: ${currentValue}`);
+
+            setActiveRoomCounter(unreadCounter);
+
+            // Subscribe to counter changes and immediately decrement any increments
+            const unsubscribe = unreadCounter.subscribe((update: any) => {
+              console.log(`=== COUNTER UPDATE FOR ACTIVE ROOM ${activeRoomId} ===`);
+              console.log('Update object:', JSON.stringify(update, null, 2));
+              console.log('Update amount:', update?.amount);
+              console.log('Update type:', typeof update);
+
+              if (update && update.amount > 0) {
+                console.log(`🔄 AUTO-DECREMENTING by ${update.amount} for active room ${activeRoomId}`);
+                console.log('Counter value before decrement:', unreadCounter.value());
+
+                // Immediately decrement by the same amount that was just incremented
+                unreadCounter.increment(-update.amount)
+                  .then(() => {
+                    console.log(`✅ Successfully auto-decremented counter by ${update.amount}`);
+                    console.log('Counter value after decrement:', unreadCounter.value());
+                  })
+                  .catch((error: any) => {
+                    console.error('❌ Failed to auto-decrement counter:', error);
+                  });
+              } else if (update && update.amount < 0) {
+                console.log(`⬇️ Counter decremented by ${Math.abs(update.amount)} (this is expected)`);
+              } else {
+                console.log('📊 Counter update with no positive amount, no action needed');
+              }
+            });
+
+            // Also reset counter to 0 when room becomes active
+            if (currentValue > 0) {
+              console.log(`🔄 RESETTING unread count from ${currentValue} to 0 for newly active room ${activeRoomId}`);
+
+              unreadCounter.increment(-currentValue)
+                .then(() => {
+                  console.log(`✅ Successfully reset counter from ${currentValue} to 0`);
+                  console.log('Counter value after reset:', unreadCounter.value());
+                })
+                .catch((error: any) => {
+                  console.error('❌ Failed to reset counter on room activation:', error);
+                });
+            } else {
+              console.log('✅ Counter already at 0, no reset needed');
+            }
+
+            return unsubscribe;
+          } else {
+            console.warn('⚠️ Unread counter not found or not subscribable for room:', activeRoomId);
+          }
+        } else {
+          console.warn('⚠️ Room map not found for active room:', activeRoomId);
+        }
+      } catch (error) {
+        console.error('❌ Failed to setup active room counter:', error);
+        console.error('Error details:', error);
+      }
+    };
+
+    setupActiveRoomCounter();
+
+    // Cleanup when room changes or component unmounts
+    return () => {
+      console.log(`🧹 CLEANING UP active room counter for: ${activeRoomId}`);
+
+      if (activeRoomCounter && typeof activeRoomCounter.unsubscribeAll === 'function') {
+        console.log('Unsubscribing from counter updates');
+        activeRoomCounter.unsubscribeAll();
+      }
+
+      console.log('Clearing active room counter state');
+      setActiveRoomCounter(null);
+    };
+  }, [channel, activeRoomId]);
+
+  // Additional effect to handle counter changes for the active room
+  useEffect(() => {
+    console.log('=== ACTIVE ROOM COUNTER STATE CHANGE ===');
+    console.log('Active room counter available:', !!activeRoomCounter);
+
+    if (!activeRoomCounter) {
+      console.log('No active room counter, skipping additional reset');
+      return;
+    }
+
+    // Reset counter when it becomes the active room counter
+    const currentValue = activeRoomCounter.value();
+    console.log(`Active room counter current value: ${currentValue}`);
+
+    if (currentValue > 0) {
+      console.log(`🔄 ADDITIONAL RESET: Resetting active room counter from ${currentValue} to 0`);
+
+      activeRoomCounter.increment(-currentValue)
+        .then(() => {
+          console.log(`✅ Successfully performed additional reset from ${currentValue} to 0`);
+          console.log('Counter value after additional reset:', activeRoomCounter.value());
+        })
+        .catch((error: any) => {
+          console.error('❌ Failed to perform additional reset of active room counter:', error);
+        });
+    } else {
+      console.log('✅ Active room counter already at 0, no additional reset needed');
+    }
+  }, [activeRoomCounter]);
 
   useEffect(() => {
     // Logic for subscribing to chat rooms via pub/sub, and updating liveobject from clientside
