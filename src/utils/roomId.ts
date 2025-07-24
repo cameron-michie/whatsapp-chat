@@ -36,7 +36,7 @@ export function createDMRoomId(userId1: string, userId2: string): string {
  */
 export function parseDMRoomId(roomId: string): DMRoomInfo | null {
   // Parse room ID with double underscore separator: room-userId1__userId2-dm
-  if (!roomId.startsWith('room-') || !roomId.endsWith('-dm')) {
+  if (!roomId || typeof roomId !== 'string' || !roomId.startsWith('room-') || !roomId.endsWith('-dm')) {
     return null;
   }
   

@@ -1,7 +1,14 @@
 export const handler = async (event) => {
   try {
-    // Parse the incoming request body
-    const request = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    // Parse the incoming request body - handle both Lambda test events and API Gateway events
+    let request;
+    if (event.body) {
+      // API Gateway event (production)
+      request = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    } else {
+      // Direct Lambda invocation or test event
+      request = event;
+    }
     
     // Extract message details
     const { message, room } = request;

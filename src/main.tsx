@@ -16,6 +16,8 @@ import {
 } from './ably-ui-kits/providers';
 import { ChatWindow } from './components/ChatWindow';
 import { RoomsList } from './components/RoomsList';
+import { OnlinePresence } from './components/OnlinePresence';
+import { AppPresence } from './components/AppPresence';
 
 // Vite will replace this at build time
 const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY as string;
@@ -33,6 +35,7 @@ const AuthenticatedApp: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showPresencePopup, setShowPresencePopup] = React.useState(false);
 
   // Parse current room from URL
   const roomMatch = location.pathname.match(/^\/room\/(.+)$/);
@@ -44,10 +47,16 @@ const AuthenticatedApp: React.FC = () => {
 
   // Create user ID for LiveObjects channel
   const userId = user?.id || '';
-  
+
   // Create client ID for Ably Chat - use fullName.userId format
   const fullName = user?.fullName || 'Unknown User';
   const clientId = `${fullName.replace(/\s+/g, '_')}.${userId}`;
+
+  // Show presence popup automatically on home page
+  React.useEffect(() => {
+    const isHomePage = location.pathname === '/';
+    setShowPresencePopup(isHomePage);
+  }, [location.pathname]);
 
   if (!user) {
     return (
@@ -57,13 +66,19 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  return <AuthenticatedAppContent
-    user={user}
-    userId={userId}
-    clientId={clientId}
-    activeRoomId={activeRoomId}
-    handleRoomSelect={handleRoomSelect}
-  />;
+  return (
+    <>
+      <AuthenticatedAppContent
+        user={user}
+        userId={userId}
+        clientId={clientId}
+        activeRoomId={activeRoomId}
+        handleRoomSelect={handleRoomSelect}
+        showPresencePopup={showPresencePopup}
+        onClosePresencePopup={() => setShowPresencePopup(false)}
+      />
+    </>
+  );
 };
 
 // Main app content component
@@ -73,6 +88,8 @@ interface AuthenticatedAppContentProps {
   clientId: string;
   activeRoomId: string | undefined;
   handleRoomSelect: (roomId: string) => void;
+  showPresencePopup: boolean;
+  onClosePresencePopup: () => void;
 }
 
 const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
@@ -81,11 +98,14 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
   clientId,
   activeRoomId,
   handleRoomSelect,
+  showPresencePopup,
+  onClosePresencePopup,
 }) => {
   // Create Ably Realtime client with LiveObjects plugin
   const ablyClient1 = new Ably.Realtime({
     key: ABLY_API_KEY,
-    plugins: { Objects }
+    plugins: { Objects },
+    clientId: clientId
   });
 
   // Create Ably Realtime client for Chat Window with authenticated clientId
@@ -106,8 +126,10 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
       <AvatarProvider>
         <ChatSettingsProvider>
           <AblyProvider client={ablyClient1}>
-            <ChatClientProvider client={chatClient}>
-              <div className="flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden h-screen w-full">
+            <ChannelProvider channelName="presence">
+              <AppPresence>
+                <ChatClientProvider client={chatClient}>
+                  <div className="flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden h-screen w-full">
                 {/* User Profile Section
                 <div className="absolute top-4 right-4 z-20 flex items-center space-x-3 bg-white shadow-lg rounded-lg px-3 py-2">
                   <img
@@ -148,8 +170,15 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
                     } />
                   </Routes>
                 </main>
-              </div>
-            </ChatClientProvider>
+                  </div>
+                  
+                  {/* Presence Popup - rendered inside presence context */}
+                  {showPresencePopup && (
+                    <OnlinePresence onClose={onClosePresencePopup} />
+                  )}
+                </ChatClientProvider>
+              </AppPresence>
+            </ChannelProvider>
           </AblyProvider>
         </ChatSettingsProvider>
       </AvatarProvider>

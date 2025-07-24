@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useChannel } from 'ably/react';
 import { useUser } from '@clerk/clerk-react';
 import { Sidebar } from '../ably-ui-kits/components/molecules';
 import { formatParticipantNames, formatMessagePreview } from '../utils/roomUtils';
-import { ContactList } from './ContactList';
 
 interface RoomData {
   chatRoomType: 'DM' | 'topic' | 'groupDM';
@@ -22,7 +21,7 @@ interface RoomsListProps {
   activeRoomId?: string;
 }
 
-export const RoomsList: React.FC<RoomsListProps> = ({
+export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   userId,
   onRoomSelect,
   activeRoomId,
@@ -43,25 +42,69 @@ export const RoomsList: React.FC<RoomsListProps> = ({
   };
 
   // Helper function to extract room data
-  const extractRoomData = (roomId: string, roomMap: any): RoomData => ({
-    chatRoomType: roomMap.get('chatRoomType') || 'DM',
-    lastMessageSeenCursor: roomMap.get('lastMessageSeenCursor') || '',
-    latestMessagePreview: roomMap.get('latestMessagePreview') || '',
-    latestMessageSender: roomMap.get('latestMessageSender') || '',
-    latestMessageTimestamp: roomMap.get('latestMessageTimestamp') || '',
-    displayMacroUrl: roomMap.get('displayMacroUrl') || '',
-    participants: roomMap.get('participants') || '',
-    unreadMessageCount: getUnreadCount(roomMap),
-  });
+  const extractRoomData = (roomId: string, roomMap: any): RoomData => {
+    console.log(`Extracting data for room ${roomId}:`, roomMap);
+    console.log('roomMap type:', typeof roomMap);
+    console.log('roomMap has get method:', typeof roomMap?.get === 'function');
+    
+    // Handle both LiveMap objects and plain objects
+    const getValue = (key: string) => {
+      if (roomMap && typeof roomMap.get === 'function') {
+        // It's a LiveMap object
+        return roomMap.get(key);
+      } else if (roomMap && typeof roomMap === 'object') {
+        // It's a plain object
+        return roomMap[key];
+      }
+      return null;
+    };
+
+    const getUnreadCountValue = () => {
+      if (roomMap && typeof roomMap.get === 'function') {
+        return getUnreadCount(roomMap);
+      } else if (roomMap && typeof roomMap === 'object') {
+        const counter = roomMap.unreadMessageCount;
+        if (counter && typeof counter === 'object' && typeof counter.value === 'function') {
+          return counter.value();
+        }
+        return typeof counter === 'number' ? counter : 0;
+      }
+      return 0;
+    };
+
+    return {
+      chatRoomType: getValue('chatRoomType') || 'DM',
+      lastMessageSeenCursor: getValue('lastMessageSeenCursor') || '',
+      latestMessagePreview: getValue('latestMessagePreview') || '',
+      latestMessageSender: getValue('latestMessageSender') || '',
+      latestMessageTimestamp: getValue('latestMessageTimestamp') || '',
+      displayMacroUrl: getValue('displayMacroUrl') || '',
+      participants: getValue('participants') || '',
+      unreadMessageCount: getUnreadCountValue(),
+    };
+  };
 
   // Helper function to load all rooms from the LiveMap
   const loadAllRooms = (root: any): Record<string, RoomData> => {
     const allRooms: Record<string, RoomData> = {};
 
-    for (const [roomId, roomMap] of root.entries()) {
-      if (roomMap) {
-        allRooms[roomId] = extractRoomData(roomId, roomMap);
+    console.log('Root object:', root);
+    console.log('Root type:', typeof root);
+    console.log('Root has entries method:', typeof root?.entries === 'function');
+
+    try {
+      if (root && typeof root.entries === 'function') {
+        for (const [roomId, roomMap] of root.entries()) {
+          console.log(`Processing room entry: ${roomId}`, roomMap);
+          if (roomMap) {
+            allRooms[roomId] = extractRoomData(roomId, roomMap);
+          }
+        }
+      } else {
+        console.error('Root object does not have entries method');
       }
+    } catch (error) {
+      console.error('Error in loadAllRooms:', error);
     }
 
     return allRooms;
@@ -81,18 +124,39 @@ export const RoomsList: React.FC<RoomsListProps> = ({
         // Load all rooms using the consolidated function
         const initialRooms = loadAllRooms(root);
         console.log('RoomsList: Found rooms:', Object.keys(initialRooms));
+        console.log('RoomsList: Room data:', initialRooms);
         setRooms(initialRooms);
         setIsLoading(false);
 
         // Subscribe to room list changes
         root.subscribe((update: any) => {
+          console.log('=== ROOT SUBSCRIPTION UPDATE ===');
           console.log('Room list updated:', update);
+          console.log('Update type:', typeof update);
+          console.log('Update keys:', Object.keys(update || {}));
 
           // On any update, reload all rooms from the LiveMap
           const updatedRooms = loadAllRooms(root);
           console.log('RoomsList: Reloaded all rooms:', Object.keys(updatedRooms));
+          console.log('RoomsList: Updated room data:', updatedRooms);
           setRooms(updatedRooms);
         });
+
+        // Also subscribe to individual room objects for real-time updates
+        for (const [roomId, roomMap] of root.entries()) {
+          if (roomMap && typeof roomMap.subscribe === 'function') {
+            console.log(`Subscribing to room: ${roomId}`);
+            roomMap.subscribe((roomUpdate: any) => {
+              console.log(`=== ROOM ${roomId} UPDATE ===`);
+              console.log('Room update:', roomUpdate);
+              
+              // Reload all rooms when any individual room updates
+              const updatedRooms = loadAllRooms(root);
+              console.log('RoomsList: Room updated, reloading all rooms');
+              setRooms(updatedRooms);
+            });
+          }
+        }
 
       } catch (error) {
         console.error('Failed to initialize LiveObjects:', error);
@@ -108,6 +172,7 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     console.log("Rooms changed!");
   }, [rooms]);
 
+  // Memoize callbacks to prevent unnecessary re-renders
   const handleRoomSelect = useCallback((roomName?: string) => {
     if (roomName) {
       onRoomSelect(roomName);
@@ -122,6 +187,34 @@ export const RoomsList: React.FC<RoomsListProps> = ({
     console.log('Leave room:', roomName);
   }, []);
 
+  // Memoize the sidebar props to prevent unnecessary re-renders
+  const sidebarProps = useMemo(() => ({
+    rooms,
+    activeRoomName: activeRoomId,
+    addRoom: handleAddRoom,
+    setActiveRoom: handleRoomSelect,
+    leaveRoom: handleLeaveRoom,
+    userId,
+    userFullName: user?.fullName,
+    className: "h-full",
+    defaultRoomOptions: {
+      // Configure Chat SDK room options consistently
+      presence: {
+        enableEvents: true,
+        subscribe: false
+      },
+      occupancy: {
+        enableEvents: true,
+        subscribe: false
+      },
+      typing: {
+        timeoutMs: 10000
+      },
+      // Ensure room gets released properly to avoid conflicts
+      release: true
+    }
+  }), [rooms, activeRoomId, handleAddRoom, handleRoomSelect, handleLeaveRoom, userId, user?.fullName]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-white border-r border-gray-200">
@@ -132,40 +225,10 @@ export const RoomsList: React.FC<RoomsListProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Contact List for starting new chats */}
-      <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <ContactList />
-      </div>
-
       {/* Existing rooms sidebar */}
       <div className="flex-1 overflow-hidden">
-        <Sidebar
-          rooms={rooms}
-          activeRoomName={activeRoomId}
-          addRoom={handleAddRoom}
-          setActiveRoom={handleRoomSelect}
-          leaveRoom={handleLeaveRoom}
-          userId={userId}
-          userFullName={user?.fullName}
-          className="h-full"
-          defaultRoomOptions={{
-            // Configure Chat SDK room options consistently
-            presence: {
-              enableEvents: true,
-              subscribe: false
-            },
-            occupancy: {
-              enableEvents: true,
-              subscribe: false
-            },
-            typing: {
-              timeoutMs: 10000
-            },
-            // Ensure room gets released properly to avoid conflicts
-            release: true
-          }}
-        />
+        <Sidebar {...sidebarProps} />
       </div>
     </div>
   );
-};
+});

@@ -25,6 +25,7 @@ export function useLiveObjectUpdates({ room }: UseLiveObjectUpdatesProps) {
     try {
       const channelName = `roomslist:${userId}`;
       const url = `https://main.realtime.ably.net/channels/${encodeURIComponent(channelName)}/objects`;
+      // Create message preview (cursor) - first 50 chars, same format as latestMessagePreview
       const messageCursor = messageText.length > 50 ? messageText.substring(0, 47) + '...' : messageText;
 
       const operations = [
@@ -102,6 +103,30 @@ export function useLiveObjectUpdates({ room }: UseLiveObjectUpdatesProps) {
     }
   }, [room, user, updateLiveObject]);
 
+  const markRoomAsSeen = useCallback(async () => {
+    if (!room || !user) return;
+
+    try {
+      const currentUserId = user.id;
+      if (!currentUserId) return;
+
+      // Get the latest message to mark as seen
+      const messages = room.messages?.messages || [];
+      if (messages.length === 0) {
+        console.log('No messages in room to mark as seen');
+        return;
+      }
+
+      const latestMessage = messages[messages.length - 1];
+      console.log('Marking room as seen - latest message:', latestMessage.text);
+      
+      // Update cursor to latest message and reset unread count
+      await updateLiveObject(currentUserId, room.roomId, latestMessage.text, true);
+    } catch (error) {
+      console.error('Error in markRoomAsSeen:', error);
+    }
+  }, [room, user, updateLiveObject]);
+
   // Subscribe to messages to handle updates automatically
   useEffect(() => {
     if (room && room.messages) {
@@ -119,9 +144,23 @@ export function useLiveObjectUpdates({ room }: UseLiveObjectUpdatesProps) {
     }
   }, [room, room?.messages, handleMessageReceived]);
 
+  // Mark room as seen when user enters the room (messages are loaded)
+  useEffect(() => {
+    if (room && room.messages && room.messages.messages && room.messages.messages.length > 0) {
+      console.log('User entered room with messages, marking as seen');
+      // Small delay to ensure messages are fully loaded
+      const timer = setTimeout(() => {
+        markRoomAsSeen();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [room, room?.messages?.messages?.length, markRoomAsSeen]);
+
   return { 
     updateLiveObject, 
     handleMessageReceived, 
-    handleMessageViewed 
+    handleMessageViewed,
+    markRoomAsSeen
   };
 }
