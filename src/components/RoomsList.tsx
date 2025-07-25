@@ -30,67 +30,23 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   const [isLoading, setIsLoading] = useState(true);
   const { channel } = useChannel(`roomslist:${userId}`);
   const { user } = useUser();
-  const [activeRoomCounter, setActiveRoomCounter] = useState<any>(null);
 
-  // Helper function to setup counter subscription with auto-decrement and reset logic
-  const setupCounterSubscription = (counter: any, roomId: string) => {
-    console.log(`🔗 Setting up counter subscription for room: ${roomId}`);
-    
-    // Subscribe to counter changes and immediately decrement any increments
-    const unsubscribe = counter.subscribe((update: any) => {
-      console.log(`=== COUNTER UPDATE FOR ACTIVE ROOM ${roomId} ===`);
-      console.log('Update object:', JSON.stringify(update, null, 2));
-      console.log('Update amount:', update?.amount);
-      console.log('Update type:', typeof update);
-      
-      if (update && update.amount > 0) {
-        console.log(`🔄 AUTO-DECREMENTING by ${update.amount} for active room ${roomId}`);
-        console.log('Counter value before decrement:', counter.value());
-        
-        // Immediately decrement by the same amount that was just incremented
-        counter.increment(-update.amount)
-          .then(() => {
-            console.log(`✅ Successfully auto-decremented counter by ${update.amount}`);
-            console.log('Counter value after decrement:', counter.value());
-          })
-          .catch((error: any) => {
-            console.error('❌ Failed to auto-decrement counter:', error);
-          });
-      } else if (update && update.amount < 0) {
-        console.log(`⬇️ Counter decremented by ${Math.abs(update.amount)} (this is expected)`);
-      } else {
-        console.log('📊 Counter update with no positive amount, no action needed');
-      }
-    });
+  // Helper function to remove counter from active room
+  const removeActiveRoomCounter = async (roomMap: any, roomId: string) => {
+    console.log(`🗑️ REMOVING counter for active room: ${roomId}`);
 
-    return unsubscribe;
-  };
-
-  // Helper function to reset counter to zero using destroy/recreate approach
-  const resetCounterToZero = async (roomMap: any, roomId: string) => {
-    console.log(`🔄 RESETTING counter to 0 for room: ${roomId}`);
-    
     try {
-      // Remove the existing counter (regardless of type)
-      console.log('📤 Removing existing unreadMessageCount');
+      // Simply remove the unreadMessageCount field
       await roomMap.remove('unreadMessageCount');
-      
-      // Create a new LiveCounter at 0
-      console.log('🏗️ Creating new LiveCounter at 0');
-      const newCounter = await channel.objects.createCounter(0);
-      
-      // Set the new counter in the room
-      console.log('💾 Setting new LiveCounter in room');
-      await roomMap.set('unreadMessageCount', newCounter);
-      
-      console.log(`✅ Successfully reset counter to 0 for room ${roomId}`);
-      return newCounter;
-      
+      console.log(`✅ Successfully removed counter for room ${roomId}`);
+      console.log('📋 Lambda will recreate counter if new messages arrive');
+
     } catch (error) {
-      console.error(`❌ Failed to reset counter for room ${roomId}:`, error);
-      throw error;
+      console.error(`❌ Failed to remove counter for room ${roomId}:`, error);
+      // Don't throw - this is not critical
     }
   };
+
 
   // Helper function to safely get unread count
   const getUnreadCount = (roomMap: any): number => {
@@ -178,7 +134,10 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     const initializeLiveObjects = async () => {
       try {
         console.log('RoomsList: Initializing LiveObjects...');
-        setIsLoading(true);
+        // Only show loading on initial load, not on subsequent updates
+        if (Object.keys(rooms).length === 0) {
+          setIsLoading(true);
+        }
 
         const root = await channel.objects.getRoot();
 
@@ -228,166 +187,44 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     initializeLiveObjects();
   }, [channel]);
 
-  // Auto-decrement unread counter for active room
+  // Remove counter for active room (Lambda will recreate as needed)
   useEffect(() => {
-    console.log('=== ACTIVE ROOM COUNTER EFFECT ===');
+    console.log('=== ACTIVE ROOM COUNTER REMOVAL EFFECT ===');
     console.log('Channel available:', !!channel);
     console.log('Active room ID:', activeRoomId);
 
     if (!channel || !activeRoomId) {
-      console.log('No channel or activeRoomId, clearing counter');
-      setActiveRoomCounter(null);
+      console.log('No channel or activeRoomId, nothing to remove');
       return;
     }
 
-    const setupActiveRoomCounter = async () => {
+    const handleActiveRoomCounter = async () => {
       try {
-        console.log(`=== SETTING UP AUTO-DECREMENT FOR ROOM: ${activeRoomId} ===`);
+        console.log(`=== REMOVING COUNTER FOR ACTIVE ROOM: ${activeRoomId} ===`);
 
         const root = await channel.objects.getRoot();
-        console.log('Got root object for active room setup');
-
         const roomMap = root.get(activeRoomId);
-        console.log('Room map for active room:', !!roomMap);
 
         if (roomMap) {
-          console.log("roomMap", roomMap);
           const unreadCounter = roomMap.get('unreadMessageCount');
-          console.log('Unread counter found:', !!unreadCounter);
-          console.log('Counter type:', typeof unreadCounter);
-          console.log('Counter value:', unreadCounter);
-          console.log('Counter constructor:', unreadCounter?.constructor?.name);
-          console.log('Counter has subscribe method:', typeof unreadCounter?.subscribe === 'function');
-          console.log('Counter has value method:', typeof unreadCounter?.value === 'function');
-          console.log('Counter has increment method:', typeof unreadCounter?.increment === 'function');
-          console.log('Available methods on counter:', Object.getOwnPropertyNames(unreadCounter || {}));
 
-          // Check if we have a proper LiveCounter or need to migrate
-          const isLiveCounter = unreadCounter && typeof unreadCounter.subscribe === 'function';
-          
-          if (!isLiveCounter && unreadCounter !== undefined) {
-            console.log('🔄 MIGRATING: Non-LiveCounter detected, converting to LiveCounter');
-            
-            try {
-              // Get current value (could be number or object)
-              const currentValue = typeof unreadCounter === 'number' ? unreadCounter : 0;
-              console.log('Current non-LiveCounter value:', currentValue);
-              
-              // Remove the old field (whether it's a number or malformed object)
-              console.log('📤 Removing old unreadMessageCount field');
-              await roomMap.remove('unreadMessageCount');
-              
-              // Create new LiveCounter at 0 (we're about to view this room)
-              console.log('🏗️ Creating new LiveCounter at 0');
-              const newCounter = await channel.objects.createCounter(0);
-              
-              // Set the new counter in the room
-              console.log('💾 Setting new LiveCounter in room');
-              await roomMap.set('unreadMessageCount', newCounter);
-              
-              console.log('✅ Successfully migrated to LiveCounter');
-              setActiveRoomCounter(newCounter);
-              
-              // Set up subscription immediately
-              setupCounterSubscription(newCounter, activeRoomId);
-              
-            } catch (migrationError) {
-              console.error('❌ Failed to migrate counter to LiveCounter:', migrationError);
-              console.warn('⚠️ Proceeding without counter functionality for this room');
-            }
-            
-            return;
-          }
-          
-          if (isLiveCounter) {
-            const currentValue = unreadCounter.value();
-            console.log(`Setting up auto-decrement for active room: ${activeRoomId}`);
-            console.log(`Current counter value: ${currentValue}`);
-
-            // Reset counter to 0 using destroy/recreate approach when room becomes active
-            if (currentValue > 0) {
-              console.log(`🔄 RESETTING unread count from ${currentValue} to 0 using destroy/recreate`);
-              
-              try {
-                const newCounter = await resetCounterToZero(roomMap, activeRoomId);
-                setActiveRoomCounter(newCounter);
-                setupCounterSubscription(newCounter, activeRoomId);
-              } catch (error) {
-                console.error('❌ Failed to reset counter, falling back to increment approach');
-                
-                // Fallback to old increment approach if destroy/recreate fails
-                unreadCounter.increment(-currentValue)
-                  .then(() => {
-                    console.log(`✅ Fallback reset successful from ${currentValue} to 0`);
-                    setActiveRoomCounter(unreadCounter);
-                    setupCounterSubscription(unreadCounter, activeRoomId);
-                  })
-                  .catch((fallbackError: any) => {
-                    console.error('❌ Even fallback reset failed:', fallbackError);
-                  });
-              }
-            } else {
-              console.log('✅ Counter already at 0, setting up subscription');
-              setActiveRoomCounter(unreadCounter);
-              setupCounterSubscription(unreadCounter, activeRoomId);
-            }
+          if (unreadCounter !== undefined) {
+            // Remove counter regardless of type (number, object, or LiveCounter)
+            await removeActiveRoomCounter(roomMap, activeRoomId);
           } else {
-            console.warn('⚠️ Unread counter not found or not subscribable for room:', activeRoomId);
+            console.log(`✅ No counter found for room ${activeRoomId}, nothing to remove`);
           }
         } else {
-          console.warn('⚠️ Room map not found for active room:', activeRoomId);
+          console.warn(`⚠️ Room map not found for active room: ${activeRoomId}`);
         }
       } catch (error) {
-        console.error('❌ Failed to setup active room counter:', error);
-        console.error('Error details:', error);
+        console.error('❌ Failed to handle active room counter:', error);
       }
     };
 
-    setupActiveRoomCounter();
+    handleActiveRoomCounter();
+  }, [channel, activeRoomId, rooms]);
 
-    // Cleanup when room changes or component unmounts
-    return () => {
-      console.log(`🧹 CLEANING UP active room counter for: ${activeRoomId}`);
-
-      if (activeRoomCounter && typeof activeRoomCounter.unsubscribeAll === 'function') {
-        console.log('Unsubscribing from counter updates');
-        activeRoomCounter.unsubscribeAll();
-      }
-
-      console.log('Clearing active room counter state');
-      setActiveRoomCounter(null);
-    };
-  }, [channel, activeRoomId]);
-
-  // Additional effect to handle counter changes for the active room
-  useEffect(() => {
-    console.log('=== ACTIVE ROOM COUNTER STATE CHANGE ===');
-    console.log('Active room counter available:', !!activeRoomCounter);
-
-    if (!activeRoomCounter) {
-      console.log('No active room counter, skipping additional reset');
-      return;
-    }
-
-    // Reset counter when it becomes the active room counter
-    const currentValue = activeRoomCounter.value();
-    console.log(`Active room counter current value: ${currentValue}`);
-
-    if (currentValue > 0) {
-      console.log(`🔄 ADDITIONAL RESET: Resetting active room counter from ${currentValue} to 0`);
-
-      activeRoomCounter.increment(-currentValue)
-        .then(() => {
-          console.log(`✅ Successfully performed additional reset from ${currentValue} to 0`);
-          console.log('Counter value after additional reset:', activeRoomCounter.value());
-        })
-        .catch((error: any) => {
-          console.error('❌ Failed to perform additional reset of active room counter:', error);
-        });
-    } else {
-      console.log('✅ Active room counter already at 0, no additional reset needed');
-    }
-  }, [activeRoomCounter]);
 
   useEffect(() => {
     // Logic for subscribing to chat rooms via pub/sub, and updating liveobject from clientside
