@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
+import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../contexts/ProfileContext';
+import { RoomListItem } from '../ably-ui-kits/components/molecules/room-list-item';
 
 interface UserProfileHeaderProps {
   userId: string;
@@ -9,6 +11,7 @@ interface UserProfileHeaderProps {
 export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) => {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const navigate = useNavigate();
   const { getProfile, fetchProfile } = useProfile();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
@@ -60,22 +63,28 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
 
           {/* Profile Content */}
           <div className="p-6 space-y-6">
-            {/* Avatar and Basic Info */}
-            <div className="flex items-center space-x-4">
-              <img
-                src={user?.imageUrl || currentProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`}
-                alt={user?.fullName || 'User avatar'}
-                className="w-16 h-16 rounded-full bg-gray-200"
-              />
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  {user?.fullName || currentProfile?.fullName || 'Unknown User'}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {user?.primaryEmailAddress?.emailAddress || 'No email'}
-                </p>
-              </div>
-            </div>
+            {/* Profile using RoomListItem */}
+            <RoomListItem
+              roomName={`profile-${userId}`}
+              roomData={{
+                chatRoomType: 'DM',
+                lastMessageSeenCursor: '',
+                latestMessagePreview: user?.primaryEmailAddress?.emailAddress || 'No email',
+                latestMessageSender: '',
+                latestMessageTimestamp: '',
+                displayMacroUrl: user?.imageUrl || currentProfile?.avatarUrl || '',
+                participants: user?.fullName || currentProfile?.fullName || 'Unknown User',
+                unreadMessageCount: 0,
+                displayName: user?.fullName || currentProfile?.fullName || 'Unknown User',
+                avatarUrl: user?.imageUrl || currentProfile?.avatarUrl,
+                isOnline: currentProfile?.isOnline || false
+              }}
+              isSelected={false}
+              onClick={() => {}} // No click action for profile display
+              onLeave={() => {}} // No leave action for profile
+              userId={userId}
+              userFullName={user?.fullName}
+            />
 
             {/* Profile Details */}
             <div className="space-y-4">
@@ -139,40 +148,45 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
 
   return (
     <>
-      {/* Profile Header Button */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        <button
-          onClick={() => setShowProfileModal(true)}
-          className="w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-        >
-          {/* Avatar */}
-          <div className="relative">
-            <img
-              src={user?.imageUrl || currentProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`}
-              alt={user?.fullName || 'User avatar'}
-              className="w-10 h-10 rounded-full bg-gray-200"
-            />
-            {/* Online status indicator */}
-            {currentProfile?.isOnline && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"></div>
-            )}
-          </div>
+      {/* Profile Header and Home Button */}
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        {/* Home Button */}
+        <div className="p-2 border-b border-gray-100 dark:border-gray-800">
+          <button
+            onClick={() => navigate('/')}
+            className="w-full flex items-center justify-center space-x-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span className="text-sm font-medium">Home</span>
+          </button>
+        </div>
 
-          {/* User Info */}
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-gray-900 dark:text-white truncate">
-              {user?.fullName || currentProfile?.fullName || 'Unknown User'}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-              View profile
-            </div>
-          </div>
-
-          {/* Arrow Icon */}
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+        {/* Profile Header using RoomListItem */}
+        <div className="p-2">
+          <RoomListItem
+            roomName={`current-user-${userId}`}
+            roomData={{
+              chatRoomType: 'DM',
+              lastMessageSeenCursor: '',
+              latestMessagePreview: 'View profile',
+              latestMessageSender: '',
+              latestMessageTimestamp: '',
+              displayMacroUrl: user?.imageUrl || currentProfile?.avatarUrl || '',
+              participants: user?.fullName || currentProfile?.fullName || 'Unknown User',
+              unreadMessageCount: 0,
+              displayName: user?.fullName || currentProfile?.fullName || 'Unknown User',
+              avatarUrl: user?.imageUrl || currentProfile?.avatarUrl,
+              isOnline: currentProfile?.isOnline || false
+            }}
+            isSelected={false}
+            onClick={() => setShowProfileModal(true)}
+            onLeave={() => {}} // No leave action for current user
+            userId={userId}
+            userFullName={user?.fullName}
+          />
+        </div>
       </div>
 
       {/* Profile Modal */}

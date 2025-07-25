@@ -398,24 +398,12 @@ export const RoomListItem = React.memo(function RoomListItem({
           initials={roomAvatarData?.initials}
         />
 
-        {/* Online/Activity indicators */}
         {/* Online indicator (green dot) */}
         {isOnline && (
           <div
             className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"
             title="Online"
           />
-        )}
-
-        {/* Unread messages indicator (red dot with count) */}
-        {hasUnreadMessages && (
-          <div
-            className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-medium border-2 border-white dark:border-gray-900"
-            aria-hidden="true"
-            title={`${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`}
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </div>
         )}
       </div>
 
