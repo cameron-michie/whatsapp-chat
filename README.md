@@ -1,6 +1,6 @@
 # WhatsApp/Slack-Style Chat Application
 
-This is a WhatsApp/Slack-style chat application built with React, TypeScript, and Ably's LiveObjects + Chat SDK. It demonstrates innovative use of LiveObjects for room state management combined with the Chat SDK for real-time messaging.
+A modern, real-time chat application built with React, TypeScript, and Ably's LiveObjects + Chat SDK. Features a dual-panel interface with comprehensive profile management, online presence indicators, and intelligent unread message handling.
 
 ## Quick Start
 
@@ -212,72 +212,64 @@ Each room in the LiveObjects LiveMap has this structure:
 ## Architecture
 
 - **Frontend**: React 19 + TypeScript + Vite
-- **Real-time**: Ably LiveObjects + Chat SDK
-- **UI Components**: Custom Ably Chat React UI Components
-- **State Management**: LiveObjects for room metadata, Chat SDK for messages
+- **Real-time**: Ably LiveObjects + Chat SDK + Presence API
+- **Authentication**: Clerk with automatic profile sync
+- **UI Components**: Custom Ably Chat React UI Components with RoomListItem primitives
+- **State Management**: LiveObjects for room metadata, Chat SDK for messages, ProfileContext for user data
 - **Styling**: Tailwind CSS with dark/light theme support
 
 ## Features
 
+### 🎯 Core Chat Features
 - ✅ WhatsApp/Slack-style dual-panel interface
-- ✅ Real-time room list with unread counts
-- ✅ Live message previews and timestamps
-- ✅ Auto-room creation via URL visits
-- ✅ Full Chat SDK integration (reactions, typing, etc.)
-- ✅ LiveObjects-powered room state management
+- ✅ Real-time messaging with full Chat SDK integration
+- ✅ Message reactions, editing, deletion, and typing indicators
 - ✅ URL-based navigation and deep linking
+- ✅ Auto-room creation via URL visits
 
+### 👥 Profile & Presence System
+- ✅ **Real Profile Data**: Fetches actual user profiles from Ably LiveObjects channels (`profile:userId`)
+- ✅ **Online Presence**: Green dots show when users are online via Ably Presence API
+- ✅ **Profile Headers**: Consistent RoomListItem primitives for user display
+- ✅ **Avatar Integration**: Profile-based avatars throughout the application
+- ✅ **Who's Online**: Live presence list using RoomListItem components
 
-curl -X POST "https://rest.ably.io/channels/roomslist:$USER_ID/objects" \
-    -u "$ABLY_API_KEY" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "data": {
-        "room-john-dm": {
-          "chatRoomType": "DM",
-          "displayMacroUrl":
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-          "lastMessageSeenCursor": "",
-          "latestMessagePreview": "Hey there! 👋",
-          "latestMessageSender": "John_Smith",
-          "latestMessageTimestamp": "1752837725000",
-          "participants": "abc,John_Smith",
-          "unreadMessageCount": 3
-        },
-        "room-jane-dm": {
-          "chatRoomType": "DM",
-          "displayMacroUrl":
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-          "lastMessageSeenCursor": "",
-          "latestMessagePreview": "How are you doing?",
-          "latestMessageSender": "Jane_Doe",
-          "latestMessageTimestamp": "1752839836000",
-          "participants": "abc,Jane_Doe",
-          "unreadMessageCount": 0
-        },
-        "room-group-chat": {
-          "chatRoomType": "groupDM",
-          "displayMacroUrl":
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Group",
-          "lastMessageSeenCursor": "",
-          "latestMessagePreview": "Great meeting everyone!",
-          "latestMessageSender": "Alice_Smith",
-          "latestMessageTimestamp": "1752841000000",
-          "participants": "abc,John_Smith,Jane_Doe,Alice_Smith",
-          "unreadMessageCount": 6
-        }
-      }
-    }'
+### 📱 Smart UX Features
+- ✅ **Intelligent Unread Counts**: Auto-reset when user is active in the room
+- ✅ **Focus Detection**: Resets counters on window focus, tab visibility, and user activity
+- ✅ **Clean Message Previews**: Properly formatted sender names (no raw client IDs)
+- ✅ **Home Navigation**: Easy navigation back to main page
+- ✅ **Recipient-Aware Input**: Message placeholder shows actual recipient names
 
-    
-// DElete
-curl -X POST "https://rest.ably.io/channels/roomslist:abc/objects" \
-  -u $ABLY_API_KEY \
-  -H "Content-Type: application/json" \
-  -d '{
-  "operation": "MAP_REMOVE",
-  "objectId": "root",
-  "data": {
-    "key": "room-john-dm3"
-  }
-}'
+### 🎨 UI Enhancements
+- ✅ **Consistent Design**: RoomListItem primitives used across all user lists
+- ✅ **Visual Indicators**: Blue unread badges on right, green online dots on avatars
+- ✅ **Profile Integration**: Click profile header to view details and sign out
+- ✅ **Responsive Design**: Works across different screen sizes
+
+## Recent Updates
+
+### v2.0 - Profile & Presence System
+- **Real Profile Integration**: Switched from mock data to actual Ably LiveObjects profile channels
+- **Smart Unread Management**: Automatic counter reset when user is active in rooms
+- **Enhanced UI Consistency**: RoomListItem primitives used throughout the application
+- **Online Presence**: Real-time green dots showing user online status
+- **Improved UX**: Focus detection, clean message previews, and recipient-aware inputs
+
+### v1.0 - Core Chat Foundation
+- **Dual-Panel Interface**: WhatsApp/Slack-style layout with rooms list and chat window
+- **LiveObjects Integration**: Room state management with real-time synchronization
+- **Chat SDK Features**: Full messaging capabilities with reactions and typing indicators
+- **URL-based Navigation**: Deep linking and auto-room creation
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
