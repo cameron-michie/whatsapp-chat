@@ -286,6 +286,83 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     handleActiveRoomCounter();
   }, [channel, activeRoomId]);
 
+  // Reset unread count when app comes into focus or user is active in the active room
+  useEffect(() => {
+    let lastResetTime = 0;
+    const RESET_THROTTLE_MS = 2000; // Only reset once every 2 seconds
+
+    const resetActiveRoomCounter = async (reason: string) => {
+      if (!channel || !activeRoomId) {
+        console.log(`⚡ ${reason} but no channel or activeRoomId`);
+        return;
+      }
+
+      // Throttle resets to prevent excessive API calls
+      const now = Date.now();
+      if (now - lastResetTime < RESET_THROTTLE_MS) {
+        console.log(`⚡ ${reason} throttled (last reset ${now - lastResetTime}ms ago)`);
+        return;
+      }
+      lastResetTime = now;
+
+      console.log(`⚡ ${reason} - resetting counter for active room: ${activeRoomId}`);
+      
+      try {
+        const root = await channel.objects.getRoot();
+        const roomMap = root.get(activeRoomId);
+
+        if (roomMap) {
+          const unreadCounter = roomMap.get('unreadMessageCount');
+          
+          if (unreadCounter !== undefined) {
+            console.log(`⚡ Resetting counter due to ${reason.toLowerCase()} for room: ${activeRoomId}`);
+            await removeActiveRoomCounter(roomMap, activeRoomId);
+          } else {
+            console.log(`⚡ No counter to reset for ${reason.toLowerCase()} room: ${activeRoomId}`);
+          }
+        } else {
+          console.warn(`⚡ Room map not found for ${reason.toLowerCase()} room: ${activeRoomId}`);
+        }
+      } catch (error) {
+        console.error(`⚡ Failed to reset counter on ${reason.toLowerCase()}:`, error);
+      }
+    };
+
+    const handleWindowFocus = () => resetActiveRoomCounter('Window focused');
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        resetActiveRoomCounter('Page became visible');
+      }
+    };
+    
+    // Throttled activity handler
+    let activityTimeout: NodeJS.Timeout;
+    const handleUserActivity = () => {
+      // Debounce activity to only trigger after user stops being active for a moment
+      clearTimeout(activityTimeout);
+      activityTimeout = setTimeout(() => {
+        resetActiveRoomCounter('User activity detected');
+      }, 500); // Wait 500ms after last activity
+    };
+
+    // Add event listeners for focus scenarios (not activity to avoid spam)
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Only listen for clicks and key events in the chat area, not mouse movement
+    document.addEventListener('click', handleUserActivity);
+    document.addEventListener('keydown', handleUserActivity);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('click', handleUserActivity);
+      document.removeEventListener('keydown', handleUserActivity);
+      clearTimeout(activityTimeout);
+    };
+  }, [channel, activeRoomId, removeActiveRoomCounter]);
+
 
   useEffect(() => {
     // Logic for subscribing to chat rooms via pub/sub, and updating liveobject from clientside
