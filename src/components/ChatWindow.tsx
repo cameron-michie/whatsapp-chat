@@ -3,23 +3,46 @@ import { useParams } from 'react-router-dom';
 import { ChatWindow as ChatWindowUI } from '../ably-ui-kits/components/molecules';
 import { ChatRoomProvider, useRoom, useMessages } from '@ably/chat/react';
 import { useUser } from '@clerk/clerk-react';
-import { useFirstMessageDetection } from '../hooks/CheckChatroomExists';
-import { useLiveObjectUpdates } from '../hooks/useLiveObjectUpdates';
+import { useAvatarProfileSync } from '../hooks/useAvatarProfileSync';
+import { useProfile } from '../contexts/ProfileContext';
+import { parseDMRoomId } from '../utils/roomId';
 
 // Inner component that uses the chat hooks
 const ChatWindowContent: React.FC<{ roomId: string }> = ({ roomId }) => {
   const room = useRoom();
   const { messages } = useMessages();
+  const { user } = useUser();
+  const { getUserName } = useProfile();
 
-  // Use our custom hooks
-  useFirstMessageDetection({ room, messages });
-  useLiveObjectUpdates({ room });
+  // Sync profile data with avatar system for proper message avatars
+  useAvatarProfileSync(roomId);
 
-  console.log('ChatWindowContent render:', { roomId, messagesCount: messages?.length || 0 });
+  // Calculate display name for the chat window
+  const getDisplayName = (): string => {
+    // Try to parse as DM room first
+    const roomInfo = parseDMRoomId(roomId);
+    if (roomInfo && user?.id) {
+      // Find the other participant (not current user)
+      const otherUserId = roomInfo.participants.find(id => id !== user.id);
+      if (otherUserId) {
+        // Get profile name for the other user
+        const profileName = getUserName(otherUserId);
+        return profileName !== otherUserId ? profileName : otherUserId;
+      }
+    }
+    
+    // Fallback to room ID for non-DM rooms or if parsing fails
+    return roomId;
+  };
+
+  const displayName = getDisplayName();
+
+  console.log('ChatWindowContent render:', { roomId, displayName, messagesCount: messages?.length || 0 });
 
   return (
     <ChatWindowUI
       roomName={roomId}
+      displayName={displayName}
       enableTypingIndicators={true}
       autoEnterPresence={true}
       windowSize={1000}

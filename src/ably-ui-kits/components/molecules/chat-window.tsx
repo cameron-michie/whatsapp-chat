@@ -22,6 +22,13 @@ export interface ChatWindowProps {
   roomName: string;
 
   /**
+   * Display name for the recipient (for DM rooms) or room (for group chats).
+   * Used in the message input placeholder and other UI elements.
+   * Falls back to roomName if not provided.
+   */
+  displayName?: string;
+
+  /**
    * Optional custom content for the header area of the chat window.
    * Typically contains room information, participant counts, settings buttons,
    * or other room-specific controls and metadata display.
@@ -263,6 +270,7 @@ export interface ChatWindowProps {
  */
 export const ChatWindow = ({
   roomName,
+  displayName,
   customHeaderContent,
   customFooterContent,
   windowSize = 200,
@@ -396,8 +404,8 @@ export const ChatWindow = ({
             onSent={(msg) => {
               updateMessages([msg]);
             }}
-            placeholder={`Message ${roomName}...`}
-            aria-label={`Send message to ${roomName}`}
+            placeholder={`Message ${displayName || roomName}...`}
+            aria-label={`Send message to ${displayName || roomName}`}
             onSendError={errorHandling?.onSendError}
             enableTyping={enableTypingIndicators}
           />

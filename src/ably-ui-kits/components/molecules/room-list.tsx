@@ -1,6 +1,6 @@
 import type { RoomOptions } from '@ably/chat';
 import React from 'react';
-
+import { parseDMRoomId } from '../../../utils/roomId.ts';
 import { RoomListItem } from './room-list-item.tsx';
 
 /**
@@ -15,6 +15,10 @@ export interface RoomData {
   displayMacroUrl: string;
   participants: string;
   unreadMessageCount: number;
+  // Profile-based enhancements
+  displayName?: string;
+  avatarUrl?: string;
+  isOnline?: boolean;
 }
 
 /**
@@ -83,6 +87,15 @@ export const RoomList = ({
   <>
     {roomNames.map((roomName) => {
       const roomData = rooms[roomName];
+
+      // Extract participantUserId for direct profile avatar loading
+      let participantUserId: string | undefined;
+      const roomInfo = parseDMRoomId(roomName);
+      if (roomInfo && userId) {
+        // Find the other participant (not current user)
+        participantUserId = roomInfo.participants.find(id => id !== userId);
+      }
+
       return (
         <RoomListItem
           key={roomName}
@@ -98,6 +111,7 @@ export const RoomList = ({
           }}
           userId={userId}
           userFullName={userFullName}
+          participantUserId={participantUserId}
         />
       );
     })}

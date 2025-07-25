@@ -21,6 +21,10 @@ export interface RoomData {
   displayMacroUrl: string;
   participants: string;
   unreadMessageCount: number;
+  // Profile-based enhancements
+  displayName?: string;
+  avatarUrl?: string;
+  isOnline?: boolean;
 }
 
 /**

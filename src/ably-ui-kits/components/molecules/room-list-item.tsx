@@ -4,6 +4,7 @@ import { Avatar, type AvatarData } from '../atoms/avatar.tsx';
 import { Button } from '../atoms/button.tsx';
 import { Icon } from '../atoms/icon.tsx';
 import { parseDMRoomId } from '../../../utils/roomId.ts';
+import { useProfile } from '../../../contexts/ProfileContext.tsx';
 
 /**
  * Room data structure
@@ -17,6 +18,10 @@ export interface RoomData {
   displayMacroUrl: string;
   participants: string;
   unreadMessageCount: number;
+  // Profile-based enhancements
+  displayName?: string;
+  avatarUrl?: string;
+  isOnline?: boolean;
 }
 
 /**
@@ -25,9 +30,9 @@ export interface RoomData {
  */
 function formatParticipantNames(participants: string, _currentUserId: string, currentUserName?: string, roomId?: string): string {
   if (!participants) return 'Unknown';
-  
+
   const participantList = participants.split(',').filter(p => p.trim() !== '');
-  
+
   // Filter out any room IDs that might have been included accidentally
   // Be more specific about what we consider room IDs
   const cleanParticipantList = participantList.filter(participant => {
@@ -35,32 +40,32 @@ function formatParticipantNames(participants: string, _currentUserId: string, cu
     // Only skip if it's clearly a room ID hash (very long alphanumeric strings)
     const isRoomIdHash = trimmedParticipant.length > 25 && /^[a-z0-9]+$/.test(trimmedParticipant);
     const isRoomIdFormat = trimmedParticipant.startsWith('room-') && trimmedParticipant.includes('__');
-    
+
     const shouldSkip = isRoomIdHash || isRoomIdFormat;
-    
+
     return !shouldSkip;
   });
-  
+
   // Remove current user from the list (match by user ID)
   const otherParticipants = cleanParticipantList.filter(participant => {
     // First try to match by actual user ID
     const isCurrentUserById = participant === _currentUserId;
-    
+
     // Also try matching by formatted name (fallback for legacy data)
     let isCurrentUserByName = false;
     if (currentUserName) {
       const formattedCurrentName = currentUserName.replace(/\s+/g, '_');
-      const participantWithoutPrefix = participant.startsWith('user_') 
-        ? participant.substring(5) 
+      const participantWithoutPrefix = participant.startsWith('user_')
+        ? participant.substring(5)
         : participant;
       isCurrentUserByName = participant === formattedCurrentName || participantWithoutPrefix === formattedCurrentName;
     }
-    
+
     const isCurrentUser = isCurrentUserById || isCurrentUserByName;
-    
+
     return !isCurrentUser;
   });
-  
+
   // If no other participants found and we have a room ID, try to extract from room ID
   if (otherParticipants.length === 0 && roomId) {
     const roomInfo = parseDMRoomId(roomId);
@@ -71,24 +76,24 @@ function formatParticipantNames(participants: string, _currentUserId: string, cu
       }
     }
   }
-  
+
   if (otherParticipants.length === 0) return 'Unknown';
-  
+
   // For single participant (DM), show full name
   if (otherParticipants.length === 1) {
     return formatSingleName(otherParticipants[0]);
   }
-  
+
   // For group chat, show first names only
   const firstNames = otherParticipants.map(participant => {
     // Remove user_ prefix if it exists
-    const cleanParticipant = participant.startsWith('user_') 
-      ? participant.substring(5) 
+    const cleanParticipant = participant.startsWith('user_')
+      ? participant.substring(5)
       : participant;
     const [firstName] = cleanParticipant.split('_');
     return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
   });
-  
+
   return firstNames.join(', ');
 }
 
@@ -98,19 +103,19 @@ function formatParticipantNames(participants: string, _currentUserId: string, cu
  */
 function formatSingleName(participant: string): string {
   // Remove "user_" prefix if it exists to avoid "user, Cameron" format
-  const cleanParticipant = participant.startsWith('user_') 
+  const cleanParticipant = participant.startsWith('user_')
     ? participant.substring(5) // Remove "user_" prefix
     : participant;
-  
+
   // If it looks like a Clerk user ID (long alphanumeric string), we can't format it nicely
   // This should ideally be replaced with actual user names from your user database
   if (cleanParticipant.length > 20 && /^[a-zA-Z0-9]+$/.test(cleanParticipant)) {
     // For now, return a generic name - in production you'd want to look up the actual name
     return 'User';
   }
-    
+
   const parts = cleanParticipant.split('_');
-  return parts.map(part => 
+  return parts.map(part =>
     part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
   ).join(' ');
 }
@@ -119,12 +124,12 @@ function formatSingleName(participant: string): string {
  * Format message preview with sender name
  */
 function formatMessagePreview(
-  latestMessagePreview: string, 
-  latestMessageSender: string, 
+  latestMessagePreview: string,
+  latestMessageSender: string,
   currentUserName?: string
 ): string {
   if (!latestMessagePreview) return 'No messages yet';
-  
+
   // Determine sender display name
   let senderName = 'Someone';
   if (latestMessageSender) {
@@ -132,20 +137,20 @@ function formatMessagePreview(
       senderName = 'You';
     } else {
       // Remove user_ prefix if it exists
-      const cleanSender = latestMessageSender.startsWith('user_') 
-        ? latestMessageSender.substring(5) 
+      const cleanSender = latestMessageSender.startsWith('user_')
+        ? latestMessageSender.substring(5)
         : latestMessageSender;
       const [firstName] = cleanSender.split('_');
       senderName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
     }
   }
-  
+
   // Truncate long messages
   const maxLength = 40;
-  const truncatedMessage = latestMessagePreview.length > maxLength 
+  const truncatedMessage = latestMessagePreview.length > maxLength
     ? latestMessagePreview.substring(0, maxLength) + '...'
     : latestMessagePreview;
-  
+
   return `${senderName}: ${truncatedMessage}`;
 }
 
@@ -216,6 +221,11 @@ export interface RoomListItemProps {
    * Current user's full name for message formatting
    */
   userFullName?: string;
+
+  /**
+   * The participant user ID for DM rooms (passed from room-list.tsx)
+   */
+  participantUserId?: string;
 }
 
 /**
@@ -270,39 +280,64 @@ export const RoomListItem = React.memo(function RoomListItem({
   typingIndicatorsEnabled = true,
   userId,
   userFullName,
+  participantUserId,
 }: RoomListItemProps) {
-  // Use room data instead of Chat SDK hooks for display-only sidebar
-  const displayName = roomData 
-    ? formatParticipantNames(roomData.participants, userId || '', userFullName, roomName)
-    : roomName;
-    
-  const messagePreview = roomData 
-    ? formatMessagePreview(roomData.latestMessagePreview, roomData.latestMessageSender, userFullName)
-    : '';
-    
+  // Use participantUserId directly if provided, otherwise parse from roomName
+  const otherUser = React.useMemo(() => {
+    if (participantUserId) return participantUserId;
+    if (!roomName.includes('-dm') || !userId) return null;
+    const parsed = parseDMRoomId(roomName);
+    const otherId = parsed?.participants.find(p => p !== userId);
+    return otherId || null;
+  }, [participantUserId, roomName, userId]);
+
+  const { getUserName, getUserAvatar, fetchProfile, getProfile } = useProfile();
+
+  // Fetch profile if not cached and we have an otherUser
+  React.useEffect(() => {
+    if (otherUser && !getProfile(otherUser)) {
+      fetchProfile(otherUser);
+    }
+  }, [otherUser, fetchProfile, getProfile]);
+
+  // Get profile data directly from useProfile hook
+  const profileName = otherUser ? getUserName(otherUser) : null;
+  const profileAvatarUrl = otherUser ? getUserAvatar(otherUser) : null;
+
+  // Simplified display name logic - use profile first, then fallback
+  const displayName = profileName || roomData?.displayName ||
+    (roomData ? formatParticipantNames(roomData.participants, userId || '', userFullName, roomName) : roomName);
+
+
+  // Message preview is already formatted in RoomsList.tsx, just use it directly
+  const messagePreview = roomData?.latestMessagePreview || 'No messages yet';
+
   const unreadCount = roomData?.unreadMessageCount || 0;
   const timestamp = roomData?.latestMessageTimestamp;
 
-  // Create avatar data from room data or use defaults
-  const roomAvatarData = propAvatar || {
+  console.log("participant user id", participantUserId);
+  console.log("useProfile(particpantuserid)", getProfile(participantUserId));
+
+  // Create avatar data with profile priority: propAvatar > profile > roomData > fallback
+  const roomAvatarData = {
     displayName: displayName,
-    src: roomData?.displayMacroUrl || undefined,
+    src: profileAvatarUrl || roomData?.avatarUrl || roomData?.displayMacroUrl || undefined,
     initials: displayName.split(' ').map(word => word.charAt(0)).join('').substring(0, 2).toUpperCase(),
     color: `bg-${['blue', 'green', 'purple', 'pink', 'indigo'][Math.abs(roomName.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % 5]}-500`
   };
 
-  // For display-only sidebar, we don't show real-time presence
-  // This can be enhanced later if needed
-  const isActive = unreadCount > 0; // Show as active if there are unread messages
+  // Enhanced presence indicators: online status or unread messages
+  const isOnline = roomData?.isOnline || false;
+  const hasUnreadMessages = unreadCount > 0;
+  const isActive = isOnline || hasUnreadMessages; // Show as active if online OR has unread messages
 
   // If collapsed, render just the avatar with selection indicator
   if (isCollapsed) {
     return (
       <div className="flex justify-center p-2">
         <div
-          className={`relative cursor-pointer transition-transform hover:scale-110 ${
-            isSelected ? 'ring-2 ring-blue-500 rounded-full' : ''
-          }`}
+          className={`relative cursor-pointer transition-transform hover:scale-110 ${isSelected ? 'ring-2 ring-blue-500 rounded-full' : ''
+            }`}
           onClick={onClick}
           title={displayName}
           role="button"
@@ -323,7 +358,12 @@ export const RoomListItem = React.memo(function RoomListItem({
             size="md"
             initials={roomAvatarData?.initials}
           />
+          {/* Show different indicators based on status */}
           {isSelected && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-gray-900" />
+          )}
+          {/* Online indicator (green dot) when not selected but user is online */}
+          {!isSelected && isOnline && (
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900" />
           )}
         </div>
@@ -358,19 +398,19 @@ export const RoomListItem = React.memo(function RoomListItem({
           initials={roomAvatarData?.initials}
         />
 
-        {/* Present indicator */}
-        {isActive && (
+        {/* Online/Activity indicators */}
+        {/* Online indicator (green dot) */}
+        {isOnline && (
           <div
             className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"
-            aria-hidden="true"
-            title="Room is active"
+            title="Online"
           />
         )}
 
-        {/* Unread count badge */}
-        {unreadCount > 0 && (
+        {/* Unread messages indicator (red dot with count) */}
+        {hasUnreadMessages && (
           <div
-            className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium"
+            className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-medium border-2 border-white dark:border-gray-900"
             aria-hidden="true"
             title={`${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`}
           >
@@ -388,9 +428,9 @@ export const RoomListItem = React.memo(function RoomListItem({
             {/* Timestamp */}
             {timestamp && (
               <span className="text-xs text-gray-400">
-                {new Date(parseInt(timestamp)).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
+                {new Date(parseInt(timestamp)).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit'
                 })}
               </span>
             )}

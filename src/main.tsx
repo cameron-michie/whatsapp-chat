@@ -18,6 +18,8 @@ import { ChatWindow } from './components/ChatWindow';
 import { RoomsList } from './components/RoomsList';
 import { OnlinePresence } from './components/OnlinePresence';
 import { AppPresence } from './components/AppPresence';
+import { ProfileProvider } from './contexts/ProfileContext';
+import { useProfileUpdater } from './hooks/useProfileUpdater';
 
 // Vite will replace this at build time
 const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY as string;
@@ -35,11 +37,10 @@ const AuthenticatedApp: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
-  const [showPresencePopup, setShowPresencePopup] = React.useState(false);
 
   // Parse current room from URL
   const roomMatch = location.pathname.match(/^\/room\/(.+)$/);
-  const activeRoomId = roomMatch ? roomMatch[1] : undefined;
+  const activeRoomId = roomMatch ? roomMatch[1] : null;
 
   const handleRoomSelect = useCallback((roomId: string) => {
     navigate(`/room/${roomId}`);
@@ -52,11 +53,9 @@ const AuthenticatedApp: React.FC = () => {
   const fullName = user?.fullName || 'Unknown User';
   const clientId = `${fullName.replace(/\s+/g, '_')}.${userId}`;
 
-  // Show presence popup automatically on home page
-  React.useEffect(() => {
-    const isHomePage = location.pathname === '/';
-    setShowPresencePopup(isHomePage);
-  }, [location.pathname]);
+  // On home page, activeRoomId should be null
+  const isHomePage = location.pathname === '/';
+  const finalActiveRoomId = isHomePage ? null : activeRoomId;
 
   if (!user) {
     return (
@@ -67,17 +66,16 @@ const AuthenticatedApp: React.FC = () => {
   }
 
   return (
-    <>
+    <ProfileProvider userId={userId}>
       <AuthenticatedAppContent
         user={user}
         userId={userId}
         clientId={clientId}
-        activeRoomId={activeRoomId}
+        activeRoomId={finalActiveRoomId}
         handleRoomSelect={handleRoomSelect}
-        showPresencePopup={showPresencePopup}
-        onClosePresencePopup={() => setShowPresencePopup(false)}
+        isHomePage={isHomePage}
       />
-    </>
+    </ProfileProvider>
   );
 };
 
@@ -86,10 +84,9 @@ interface AuthenticatedAppContentProps {
   user: any;
   userId: string;
   clientId: string;
-  activeRoomId: string | undefined;
+  activeRoomId: string | null;
   handleRoomSelect: (roomId: string) => void;
-  showPresencePopup: boolean;
-  onClosePresencePopup: () => void;
+  isHomePage: boolean;
 }
 
 const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
@@ -98,9 +95,11 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
   clientId,
   activeRoomId,
   handleRoomSelect,
-  showPresencePopup,
-  onClosePresencePopup,
+  isHomePage,
 }) => {
+  // Update user profile on login
+  useProfileUpdater();
+
   // Create Ably Realtime client with LiveObjects plugin
   const ablyClient1 = new Ably.Realtime({
     key: ABLY_API_KEY,
@@ -160,22 +159,12 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
                     <Route path="/room/:roomId" element={<ChatWindow />} />
                     <Route path="/" element={
                       <div className="flex flex-col h-full">
-                        <div className="flex-1 flex items-center justify-center bg-gray-50">
-                          <div className="text-center p-8">
-                            <h2 className="text-xl font-semibold text-gray-900 mb-2">Welcome to Chat</h2>
-                            <p className="text-gray-600 mb-6">Select a chat from the sidebar to start messaging.</p>
-                          </div>
-                        </div>
+                        <OnlinePresence onClose={() => {}} inlineMode={true} />
                       </div>
                     } />
                   </Routes>
                 </main>
                   </div>
-                  
-                  {/* Presence Popup - rendered inside presence context */}
-                  {showPresencePopup && (
-                    <OnlinePresence onClose={onClosePresencePopup} />
-                  )}
                 </ChatClientProvider>
               </AppPresence>
             </ChannelProvider>
