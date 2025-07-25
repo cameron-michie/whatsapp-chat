@@ -110,6 +110,27 @@ export const handler = async (event) => {
   }
 };
 
+// Helper function to make Ably REST API requests
+async function makeAblyRequest(url, operations, apiKey) {
+  const isArray = Array.isArray(operations);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(apiKey).toString('base64')}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(operations)
+  });
+  
+  if (!response.ok) {
+    const errorResponse = await response.json();
+    throw new Error(`Ably API error: ${response.status} - ${JSON.stringify(errorResponse)}`);
+  }
+  
+  return await response.json();
+}
+
 async function updateLiveObjectsForRecipients(recipients, roomId, messageText, senderId, messageTimestamp) {
   const ABLY_API_KEY = "ALwA2Q.4QI37w:D_h8yJGTdcH5Xp8ZB9d7Tt9Zbp7QjfuXTdAL3HLBV1Y";
   const timestamp = messageTimestamp ? messageTimestamp.toString() : Date.now().toString();
@@ -174,32 +195,63 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
           data: { key: "participants", value: { string: recipients.join(',') } }
         },
         {
-          operation: "COUNTER_INCREMENT",
+          operation: "COUNTER_INC",
           path: `${roomId}.unreadMessageCount`,
           data: { number: 1 }
         }
       ];
       
-      // Send each operation separately
-      for (const update of updates) {
-        console.log(`Sending update operation:`, JSON.stringify(update, null, 2));
+      // Try to send operations as a batch first (more efficient)
+      console.log('🚀 Attempting batch operations:', JSON.stringify(updates, null, 2));
+      
+      try {
+        const batchResponse = await makeAblyRequest(url, updates, ABLY_API_KEY);
+        console.log('✅ Batch update successful:', JSON.stringify(batchResponse, null, 2));
         
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${Buffer.from(ABLY_API_KEY).toString('base64')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(update)
-        });
+      } catch (batchError) {
+        console.log('❌ Batch update failed, falling back to individual operations:', batchError.message);
         
-        if (!response.ok) {
-          const errorResponse = await response.json();
-          console.error(`Failed to update ${update.path} for recipient ${recipientId}:`, response.status, errorResponse);
-        } else {
-          const successResponse = await response.json();
-          console.log(`Successfully updated ${update.path} for recipient ${recipientId}`);
-          console.log('Success response:', JSON.stringify(successResponse, null, 2));
+        // Check if the error is counter-related and try to fix it
+        const counterOperation = updates.find(op => op.operation === 'COUNTER_INC');
+        let counterCreateNeeded = false;
+        
+        if (counterOperation && batchError.message.includes('unreadMessageCount')) {
+          console.log('🔄 Attempting to create missing LiveCounter');
+          
+          try {
+            // Try to create the counter first
+            const createCounterOperation = {
+              operation: "COUNTER_CREATE",
+              path: `${roomId}.unreadMessageCount`,
+              data: { number: 1 }
+            };
+            
+            console.log('Creating missing counter:', JSON.stringify(createCounterOperation, null, 2));
+            const counterResult = await makeAblyRequest(url, createCounterOperation, ABLY_API_KEY);
+            console.log('✅ Counter created:', JSON.stringify(counterResult, null, 2));
+            counterCreateNeeded = true;
+            
+          } catch (createError) {
+            console.error('❌ Failed to create counter:', createError.message);
+          }
+        }
+        
+        // Send remaining operations individually (excluding counter if we just created it)
+        const operationsToSend = counterCreateNeeded 
+          ? updates.filter(op => op.operation !== 'COUNTER_INC')
+          : updates;
+          
+        console.log('📤 Sending individual operations:', operationsToSend.length);
+        
+        for (const update of operationsToSend) {
+          console.log(`Sending individual operation:`, JSON.stringify(update, null, 2));
+          
+          try {
+            const successResponse = await makeAblyRequest(url, update, ABLY_API_KEY);
+            console.log(`✅ Successfully updated ${update.path} for recipient ${recipientId}`);
+          } catch (individualError) {
+            console.error(`❌ Individual operation failed for ${update.path}:`, individualError.message);
+          }
         }
       }
       
@@ -241,30 +293,36 @@ async function createLiveObjectForRecipient(recipientId, roomId, messagePreview,
   ];
   
   try {
-    // Send each create operation separately
-    for (const createOp of createOperations) {
-      console.log(`Sending create operation:`, JSON.stringify(createOp, null, 2));
+    // Send each create operation separately (batching doesn't work for MAP_CREATE + COUNTER_CREATE)
+    console.log(`🏗️ Creating room and counter separately for recipient: ${recipientId}`);
+    
+    for (const [index, createOp] of createOperations.entries()) {
+      console.log(`📤 Sending create operation ${index + 1}/${createOperations.length}:`, JSON.stringify(createOp, null, 2));
       
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${Buffer.from(ABLY_API_KEY).toString('base64')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(createOp)
-      });
-      
-      if (!response.ok) {
-        const errorResponse = await response.json();
-        console.error(`Failed to create ${createOp.path} for recipient ${recipientId}:`, response.status, errorResponse);
-      } else {
-        const successResponse = await response.json();
-        console.log(`Successfully created ${createOp.path} for recipient ${recipientId}`);
-        console.log('Create success response:', JSON.stringify(successResponse, null, 2));
+      try {
+        const successResponse = await makeAblyRequest(url, createOp, ABLY_API_KEY);
+        console.log(`✅ Successfully created ${createOp.path} for recipient ${recipientId}`);
+        console.log(`📋 Create success response:`, JSON.stringify(successResponse, null, 2));
+        
+        // Small delay between operations to ensure room is ready for counter
+        if (createOp.operation === 'MAP_CREATE') {
+          console.log('⏳ Brief pause before creating counter...');
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      } catch (operationError) {
+        console.error(`❌ Operation failed for ${createOp.path}:`, operationError.message);
+        
+        // If room creation failed, don't attempt counter creation
+        if (createOp.operation === 'MAP_CREATE') {
+          console.error(`💥 Room creation error, skipping counter creation`);
+          break;
+        }
       }
     }
     
+    console.log(`🏁 Completed room creation process for recipient: ${recipientId}`);
+    
   } catch (error) {
-    console.error(`Error creating LiveObject for recipient ${recipientId}:`, error);
+    console.error(`❌ Error creating LiveObject for recipient ${recipientId}:`, error);
   }
 }
