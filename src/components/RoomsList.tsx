@@ -109,9 +109,8 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
       return 0;
     };
 
-    // Simplified: Just extract the basic room data
-    // Avatar and display name are now handled directly in RoomListItem
-    return {
+    // Extract basic room data
+    const baseRoomData = {
       chatRoomType: getValue('chatRoomType') || 'DM',
       lastMessageSeenCursor: getValue('lastMessageSeenCursor') || '',
       latestMessagePreview: getValue('latestMessagePreview') || '',
@@ -121,10 +120,33 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
       participants: getValue('participants') || '',
       unreadMessageCount: getUnreadCountValue()
     };
+
+    // Check if this is a DM room and determine online status
+    let isOnline = false;
+    const roomInfo = parseDMRoomId(roomId);
+    if (roomInfo && roomInfo.participants.length === 2) {
+      // Find the other participant (not current user)
+      const otherUserId = roomInfo.participants.find(id => id !== userId);
+      if (otherUserId) {
+        // Check if the other user is online using presence data
+        isOnline = onlineUserIds.has(otherUserId);
+        console.log(`🟢 Room ${roomId}:`, {
+          otherUserId,
+          isOnline,
+          onlineUserIds: Array.from(onlineUserIds),
+          roomInfo: roomInfo.participants
+        });
+      }
+    }
+
+    return {
+      ...baseRoomData,
+      isOnline
+    };
   };
 
   // Helper function to load all rooms from the LiveMap with profile enhancement
-  const loadAllRooms = async (root: any): Promise<Record<string, RoomData>> => {
+  const loadAllRooms = useCallback(async (root: any): Promise<Record<string, RoomData>> => {
     const allRooms: Record<string, RoomData> = {};
 
     console.log('Root object:', root);
@@ -162,7 +184,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     }
 
     return allRooms;
-  };
+  }, [onlineUserIds, userId]);
 
   // Initialize LiveObjects and load rooms
   useEffect(() => {
@@ -269,6 +291,38 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     // Logic for subscribing to chat rooms via pub/sub, and updating liveobject from clientside
     console.log("Rooms changed!");
   }, [rooms]);
+
+  // Reload rooms when presence data changes to update online status
+  useEffect(() => {
+    if (!channel) return;
+
+    const reloadRoomsWithPresence = async () => {
+      try {
+        console.log('🟢 Presence data changed, reloading rooms with online status');
+        console.log('🟢 Online user IDs:', Array.from(onlineUserIds));
+        
+        const root = await channel.objects.getRoot();
+        const updatedRooms = await loadAllRooms(root);
+        console.log('🟢 Reloaded rooms with presence data:', Object.keys(updatedRooms));
+        
+        // Log each room's online status for debugging
+        Object.entries(updatedRooms).forEach(([roomId, roomData]) => {
+          if (roomData.isOnline) {
+            console.log(`🟢 Room ${roomId} has online user`);
+          }
+        });
+        
+        setRooms(updatedRooms);
+      } catch (error) {
+        console.error('Error reloading rooms with presence:', error);
+      }
+    };
+
+    // Only reload if we have presence data and rooms
+    if (onlineUserIds.size > 0) {
+      reloadRoomsWithPresence();
+    }
+  }, [onlineUserIds, channel, loadAllRooms]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleRoomSelect = useCallback((roomName?: string) => {
