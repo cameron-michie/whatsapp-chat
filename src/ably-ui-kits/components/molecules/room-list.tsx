@@ -1,5 +1,4 @@
 import type { RoomOptions } from '@ably/chat';
-import React from 'react';
 import { parseDMRoomId } from '../../../utils/roomId.ts';
 import { RoomListItem } from './room-list-item.tsx';
 

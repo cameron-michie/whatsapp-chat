@@ -1,5 +1,5 @@
 import { usePresenceListener } from '@ably/chat/react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Props for the PresenceIndicators component

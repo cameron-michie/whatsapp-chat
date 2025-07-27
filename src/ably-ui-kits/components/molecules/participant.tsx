@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { useUserAvatar } from '../../hooks/use-user-avatar.tsx';
 import { Avatar } from '../atoms/avatar.tsx';

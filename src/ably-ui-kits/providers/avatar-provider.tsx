@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { AvatarData } from '../components/atoms/avatar.tsx';
 import { AvatarContext } from '../context/avatar-context.tsx';

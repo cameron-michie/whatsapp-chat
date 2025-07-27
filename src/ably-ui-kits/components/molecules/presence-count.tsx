@@ -1,5 +1,4 @@
 import type { PresenceMember } from '@ably/chat';
-import React from 'react';
 
 /**
  * Props for the PresenceCount component

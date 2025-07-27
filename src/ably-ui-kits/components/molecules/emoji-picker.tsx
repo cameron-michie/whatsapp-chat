@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const DEFAULT_EMOJI_STORAGE_KEY = 'ably-chat-recent-emojis';
 

@@ -1,7 +1,7 @@
 import type { RoomReactionEvent } from '@ably/chat';
 import { useRoomReactions } from '@ably/chat/react';
 import { clsx } from 'clsx';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useThrottle } from '../../hooks/use-throttle.tsx';
 import { EmojiBurst } from './emoji-burst.tsx';
