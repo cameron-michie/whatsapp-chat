@@ -26,7 +26,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
 
   // Use Ably presence listener to track who's online (presence entry handled at app level)
   const { presenceData } = usePresenceListener('presence');
-  
+
   // Debug presence hook state
   useEffect(() => {
     console.log('usePresence hook state changed:', {
@@ -40,7 +40,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
   useEffect(() => {
     console.log('Raw presenceData:', presenceData);
     console.log('Current user ID:', user?.id);
-    
+
     if (presenceData) {
       console.log('Processing presence data:', presenceData.map(member => ({
         clientId: member.clientId,
@@ -158,7 +158,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
                       }}
                       isSelected={false}
                       onClick={() => handleStartChat(onlineUser)}
-                      onLeave={() => {}} // No leave function for online users
+                      onLeave={() => { }} // No leave function for online users
                       userId={user?.id}
                       userFullName={user?.fullName || undefined}
                       participantUserId={onlineUser.userId}
@@ -183,7 +183,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Who's Online
+                Online now
               </h2>
             </div>
             <div className="flex items-center space-x-3">
@@ -239,7 +239,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
                 }}
                 isSelected={false}
                 onClick={() => handleStartChat(onlineUser)}
-                onLeave={() => {}} // No leave function for online users
+                onLeave={() => { }} // No leave function for online users
                 userId={user?.id}
                 userFullName={user?.fullName || undefined}
                 participantUserId={onlineUser.userId}

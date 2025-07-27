@@ -8,7 +8,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn, useUser } from '@clerk/clerk-react';
 import './index.css';
-import '../dist/style.css';
+import './dist_style.css';
 import {
   AvatarProvider,
   ChatSettingsProvider,
@@ -129,7 +129,7 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
               <AppPresence>
                 <ChatClientProvider client={chatClient}>
                   <div className="flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden h-screen w-full">
-                {/* User Profile Section
+                    {/* User Profile Section
                 <div className="absolute top-4 right-4 z-20 flex items-center space-x-3 bg-white shadow-lg rounded-lg px-3 py-2">
                   <img
                     src={user.imageUrl}
@@ -142,28 +142,28 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
                 </div>
  */}
 
-                {/* Sidebar - Rooms List */}
-                <div className="flex-shrink-0 w-1/4 min-w-80 max-w-96">
-                  <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
-                    <RoomsList
-                      userId={userId}
-                      onRoomSelect={handleRoomSelect}
-                      activeRoomId={activeRoomId || undefined}
-                    />
-                  </ChannelProvider>
-                </div>
+                    {/* Sidebar - Rooms List */}
+                    <div className="flex-shrink-0 w-1/4 min-w-80 max-w-96">
+                      <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
+                        <RoomsList
+                          userId={userId}
+                          onRoomSelect={handleRoomSelect}
+                          activeRoomId={activeRoomId || undefined}
+                        />
+                      </ChannelProvider>
+                    </div>
 
-                {/* Main Content - Chat Window */}
-                <main className="flex-1 overflow-hidden">
-                  <Routes>
-                    <Route path="/room/:roomId" element={<ChatWindow />} />
-                    <Route path="/" element={
-                      <div className="flex flex-col h-full">
-                        <OnlinePresence onClose={() => {}} inlineMode={true} />
-                      </div>
-                    } />
-                  </Routes>
-                </main>
+                    {/* Main Content - Chat Window */}
+                    <main className="flex-1 overflow-hidden">
+                      <Routes>
+                        <Route path="/room/:roomId" element={<ChatWindow />} />
+                        <Route path="/" element={
+                          <div className="flex flex-col h-full">
+                            <OnlinePresence onClose={() => { }} inlineMode={true} />
+                          </div>
+                        } />
+                      </Routes>
+                    </main>
                   </div>
                 </ChatClientProvider>
               </AppPresence>

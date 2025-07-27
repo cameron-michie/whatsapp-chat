@@ -25,7 +25,7 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
         setCurrentProfile(profile);
       }
     };
-    
+
     loadCurrentProfile();
   }, [userId, fetchProfile, getProfile]);
 
@@ -80,8 +80,8 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
                 isOnline: currentProfile?.isOnline || false
               }}
               isSelected={false}
-              onClick={() => {}} // No click action for profile display
-              onLeave={() => {}} // No leave action for profile
+              onClick={() => { }} // No click action for profile display
+              onLeave={() => { }} // No leave action for profile
               userId={userId}
               userFullName={user?.fullName || undefined}
             />
@@ -182,7 +182,7 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
             }}
             isSelected={false}
             onClick={() => setShowProfileModal(true)}
-            onLeave={() => {}} // No leave action for current user
+            onLeave={() => { }} // No leave action for current user
             userId={userId}
             userFullName={user?.fullName || undefined}
           />
