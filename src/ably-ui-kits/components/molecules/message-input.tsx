@@ -186,7 +186,7 @@ export const MessageInput = ({
         }
       })
         .then(async (sentMessage) => {
-          console.log("Chat message sent successfully:", sentMessage.timeserial);
+          console.log("Chat message sent successfully:", sentMessage.serial);
           
           onSent?.(sentMessage);
           setMessage('');

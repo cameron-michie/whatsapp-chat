@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatWindow as ChatWindowUI } from '../ably-ui-kits/components/molecules';
 import { ChatRoomProvider, useRoom, useMessages } from '@ably/chat/react';
@@ -9,7 +9,7 @@ import { parseDMRoomId } from '../utils/roomId';
 
 // Inner component that uses the chat hooks
 const ChatWindowContent: React.FC<{ roomId: string }> = ({ roomId }) => {
-  const room = useRoom();
+  // const room = useRoom(); // Room info available but not currently used
   const { messages } = useMessages();
   const { user } = useUser();
   const { getUserName } = useProfile();
@@ -37,7 +37,7 @@ const ChatWindowContent: React.FC<{ roomId: string }> = ({ roomId }) => {
 
   const displayName = getDisplayName();
 
-  console.log('ChatWindowContent render:', { roomId, displayName, messagesCount: messages?.length || 0 });
+  console.log('ChatWindowContent render:', { roomId, displayName, hasMessages: !!messages });
 
   return (
     <ChatWindowUI
@@ -47,7 +47,7 @@ const ChatWindowContent: React.FC<{ roomId: string }> = ({ roomId }) => {
       autoEnterPresence={true}
       windowSize={1000}
       className="!w-full !max-w-none !min-w-0"
-      style={{ width: '100%', maxWidth: 'none', minWidth: 0 }}
+      // style={{ width: '100%', maxWidth: 'none', minWidth: 0 }}
       errorHandling={{
         onSendError: (error, text) => {
           console.error('Send error:', error, text);

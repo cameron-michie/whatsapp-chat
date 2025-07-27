@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
-import type { Room, Message } from '@ably/chat';
+import type { Room, Message, ChatMessageEvent } from '@ably/chat';
 import { useUser } from '@clerk/clerk-react';
-import { parseClientId, createClientId } from '../utils/clientId';
+import { parseClientId } from '../utils/clientId';
 import { parseDMRoomId, getOtherParticipant } from '../utils/roomId';
 
 const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY as string;
@@ -100,12 +100,12 @@ export function useFirstMessageDetection({ room, messages }: UseFirstMessageDete
     }
 
     try {
-      console.log('HandleFirstMessage: Processing room', { roomId: room.roomId, messageText: message.text });
+      console.log('HandleFirstMessage: Processing room', { roomId: room.roomName, messageText: message.text });
       
       // Parse room ID to get participants
-      const roomInfo = parseDMRoomId(room.roomId);
+      const roomInfo = parseDMRoomId(room.roomName);
       if (!roomInfo) {
-        console.error('Invalid room ID format:', room.roomId);
+        console.error('Invalid room ID format:', room.roomName);
         console.log('Expected format: room-userId1__userId2-dm');
         return;
       }
@@ -120,23 +120,23 @@ export function useFirstMessageDetection({ room, messages }: UseFirstMessageDete
       }
 
       const currentUserId = currentUserParsed.userId;
-      const otherUserId = getOtherParticipant(room.roomId, currentUserId);
+      const otherUserId = getOtherParticipant(room.roomName, currentUserId);
       
       if (!otherUserId) {
-        console.error('Could not find other participant in room:', room.roomId);
+        console.error('Could not find other participant in room:', room.roomName);
         return;
       }
 
       console.log('DM participants:', { currentUserId, otherUserId });
 
       // Check and create LiveObject for the other participant
-      const otherUserChatroomExists = await checkChatroomExists(otherUserId, room.roomId);
+      const otherUserChatroomExists = await checkChatroomExists(otherUserId, room.roomName);
       
       if (!otherUserChatroomExists) {
         console.log(`Creating LiveObject for other participant ${otherUserId}`);
         await createChatroomInLiveObject(
           otherUserId,
-          room.roomId,
+          room.roomName,
           message.text,
           currentUserParsed.displayName,
           currentUserParsed.userId
@@ -146,14 +146,14 @@ export function useFirstMessageDetection({ room, messages }: UseFirstMessageDete
       }
 
       // Also create for current user if needed
-      const currentUserChatroomExists = await checkChatroomExists(currentUserId, room.roomId);
+      const currentUserChatroomExists = await checkChatroomExists(currentUserId, room.roomName);
       if (!currentUserChatroomExists) {
         console.log(`Creating LiveObject for current user ${currentUserParsed.displayName}`);
         // For current user, we don't have the other user's display name yet
         // We'll use their userId as display name for now
         await createChatroomInLiveObject(
           currentUserId,
-          room.roomId,
+          room.roomName,
           message.text,
           otherUserId, // Using userId as display name - could be enhanced later
           otherUserId
@@ -173,17 +173,15 @@ export function useFirstMessageDetection({ room, messages }: UseFirstMessageDete
       console.log('Joined room with no message history, setting up first message detection');
       
       // Listen for the first message
-      const handleMessage = (message: Message) => {
-        console.log('First message detected:', message);
-        handleFirstMessage(message);
+      const handleMessage = (event: ChatMessageEvent) => {
+        console.log('First message detected:', event.message);
+        handleFirstMessage(event.message);
       };
 
-      room.messages.subscribe(handleMessage);
+      const { unsubscribe } = room.messages.subscribe(handleMessage);
 
       return () => {
-        if (room.messages) {
-          room.messages.unsubscribe(handleMessage);
-        }
+        unsubscribe();
       };
     } else {
       console.log('First message detection conditions not met:', { 

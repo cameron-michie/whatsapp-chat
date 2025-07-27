@@ -2,6 +2,8 @@
  * Utility functions for room management
  */
 
+import { parseDMRoomId } from './roomId';
+
 /**
  * Create a short hash from sorted user IDs for room identification
  */
@@ -80,7 +82,7 @@ export function formatParticipantNames(participants: string, currentUserId: stri
     console.log('No participants found, trying to extract from room ID:', roomId);
     const roomInfo = parseDMRoomId(roomId);
     if (roomInfo) {
-      const otherUserId = roomInfo.participants.find(id => id !== currentUserId);
+      const otherUserId = roomInfo.participants.find((id: string) => id !== currentUserId);
       if (otherUserId) {
         console.log('Found other user ID from room:', otherUserId);
         return formatSingleName(otherUserId);
