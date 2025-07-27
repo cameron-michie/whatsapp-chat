@@ -1,5 +1,4 @@
-import { PresenceMember } from '@ably/chat';
-import React from 'react';
+import type { PresenceMember } from '@ably/chat';
 
 import { Button } from '../atoms/button.tsx';
 import { Icon } from '../atoms/icon.tsx';

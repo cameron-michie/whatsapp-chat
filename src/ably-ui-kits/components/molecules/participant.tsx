@@ -1,7 +1,8 @@
 import React from 'react';
 
 import { useUserAvatar } from '../../hooks/use-user-avatar.tsx';
-import { Avatar, AvatarData } from '../atoms/avatar.tsx';
+import { Avatar } from '../atoms/avatar.tsx';
+import type { AvatarData } from '../atoms/avatar.tsx';
 import { TypingDots } from '../atoms/typing-dots.tsx';
 
 /**

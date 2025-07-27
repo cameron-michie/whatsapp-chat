@@ -1,7 +1,8 @@
-import { ErrorInfo, Message } from '@ably/chat';
+import type { ErrorInfo, Message } from '@ably/chat';
 import { useMessages, useTyping, useRoom } from '@ably/chat/react';
 import { useUser } from '@clerk/clerk-react';
-import React, { ChangeEvent, KeyboardEvent, useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 
 import { parseDMRoomId } from '../../../utils/roomId';
 

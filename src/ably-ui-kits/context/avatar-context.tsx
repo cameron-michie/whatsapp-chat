@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 
-import { AvatarData } from '../components/atoms/avatar.tsx';
-import { AvatarChangeCallback, PersistedAvatarData } from '../providers/avatar-provider.tsx';
+import type { AvatarData } from '../components/atoms/avatar.tsx';
+import type { AvatarChangeCallback, PersistedAvatarData } from '../providers/avatar-provider.tsx';
 
 /**
  * Shape of the AvatarContext value providing comprehensive avatar management

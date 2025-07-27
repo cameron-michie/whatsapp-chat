@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AvatarData } from '../components/atoms/avatar.tsx';
+import type { AvatarData } from '../components/atoms/avatar.tsx';
 import { useAvatar } from './use-avatar.tsx';
 
 /**

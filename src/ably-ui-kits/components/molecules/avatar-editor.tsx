@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
-import { Avatar, AvatarData } from '../atoms/avatar.tsx';
+import { Avatar } from '../atoms/avatar.tsx';
+import type { AvatarData } from '../atoms/avatar.tsx';
 import { Button } from '../atoms/button.tsx';
 import { Icon } from '../atoms/icon.tsx';
 

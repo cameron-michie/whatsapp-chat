@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProfile } from '../contexts/ProfileContext';
-import { AvatarData } from '../ably-ui-kits/components/atoms/avatar';
+import type { AvatarData } from '../ably-ui-kits/components/atoms/avatar';
 
 /**
  * Simple hook that directly converts a userId to avatar data using the profile system

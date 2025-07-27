@@ -3,7 +3,8 @@ import { clsx } from 'clsx';
 import React, { useState } from 'react';
 
 import { useRoomAvatar } from '../../hooks/use-room-avatar.tsx';
-import { Avatar, AvatarData } from '../atoms/avatar.tsx';
+import { Avatar } from '../atoms/avatar.tsx';
+import type { AvatarData } from '../atoms/avatar.tsx';
 import { ParticipantList } from './participant-list.tsx';
 import { PresenceCount } from './presence-count.tsx';
 import { PresenceIndicators } from './presence-indicators.tsx';

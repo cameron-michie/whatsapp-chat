@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 /**
  * Props for the AppLoading component.
  */

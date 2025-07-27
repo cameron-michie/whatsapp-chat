@@ -1,4 +1,4 @@
-import { Message } from '@ably/chat';
+import type { Message } from '@ably/chat';
 import { useChatClient } from '@ably/chat/react';
 import { clsx } from 'clsx';
 import React, { useEffect, useRef, useState } from 'react';

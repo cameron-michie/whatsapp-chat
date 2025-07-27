@@ -5,7 +5,7 @@
  */
 import { createContext } from 'react';
 
-import { ThemeChangeCallback, ThemeType } from '../providers/theme-provider.tsx';
+import type { ThemeChangeCallback, ThemeType } from '../providers/theme-provider.tsx';
 
 /**
  * Shape of the ThemeContext value providing comprehensive theme management

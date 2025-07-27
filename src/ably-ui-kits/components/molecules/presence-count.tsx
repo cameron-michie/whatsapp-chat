@@ -1,4 +1,4 @@
-import { PresenceMember } from '@ably/chat';
+import type { PresenceMember } from '@ably/chat';
 import React from 'react';
 
 /**

@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 
-import { ThemeContext, ThemeContextType } from '../context/theme-context.tsx';
+import { ThemeContext } from '../context/theme-context.tsx';
+import type { ThemeContextType } from '../context/theme-context.tsx';
 
 /**
  * Hook to access the theme context with comprehensive theme management

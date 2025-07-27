@@ -1,6 +1,7 @@
 import { useChatClient, useTyping } from '@ably/chat/react';
 import { clsx } from 'clsx';
-import React, { ReactNode, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import type { ReactNode } from 'react';
 
 import { TypingDots } from '../atoms/typing-dots.tsx';
 

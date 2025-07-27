@@ -1,5 +1,4 @@
-import { Message } from '@ably/chat';
-import React from 'react';
+import type { Message } from '@ably/chat';
 
 /**
  * Props for the MessageReactions component

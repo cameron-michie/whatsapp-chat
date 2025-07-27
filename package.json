@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "build:ci": "CI=true npm run build",
+    "preview": "vite preview",
+    "prune": "ts-prune"
   },
   "dependencies": {
     "@ably/chat": "^0.10.0",
@@ -20,16 +24,25 @@
     "react-router-dom": "^7.7.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.30.1",
+    "@eslint/js": "^9.32.0",
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react-swc": "^3.10.2",
-    "eslint": "^9.30.1",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.3",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "eslint-plugin-unused-imports": "^4.1.4",
     "globals": "^16.3.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.11",
+    "ts-prune": "^0.10.3",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.35.1",
+    "typescript-eslint": "^8.38.0",
     "vite": "^7.0.4"
   }
 }

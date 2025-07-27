@@ -1,10 +1,13 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
+import type { ReactNode } from 'react';
 
 import { 
   ChatSettingsContext, 
-  ChatSettingsContextType, 
-  ChatSettings, 
   DEFAULT_SETTINGS 
+} from '../context/chat-settings-context.tsx';
+import type {
+  ChatSettingsContextType, 
+  ChatSettings
 } from '../context/chat-settings-context.tsx';
 
 /**

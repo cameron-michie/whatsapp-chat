@@ -1,4 +1,4 @@
-import { Message } from '@ably/chat';
+import type { Message } from '@ably/chat';
 import { clsx } from 'clsx';
 import React, {
   forwardRef,

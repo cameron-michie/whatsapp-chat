@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { Room, Message } from '@ably/chat';
+import type { Room, Message } from '@ably/chat';
 import { useUser } from '@clerk/clerk-react';
 import { parseClientId, createClientId } from '../utils/clientId';
 import { parseDMRoomId, getOtherParticipant } from '../utils/roomId';

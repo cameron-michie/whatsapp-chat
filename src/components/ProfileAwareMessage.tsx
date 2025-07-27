@@ -1,5 +1,5 @@
 import React from 'react';
-import { Message } from '@ably/chat';
+import type { Message } from '@ably/chat';
 import { ChatMessage } from '../ably-ui-kits/components/molecules/chat-message';
 import { useProfile } from '../contexts/ProfileContext';
 import { useProfileAwareAvatar } from '../ably-ui-kits/hooks/use-profile-aware-avatar';

@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 
-import { ChatSettingsContext, ChatSettingsContextType } from '../context/chat-settings-context.tsx';
+import { ChatSettingsContext } from '../context/chat-settings-context.tsx';
+import type { ChatSettingsContextType } from '../context/chat-settings-context.tsx';
 
 /**
  * Hook to access the chat settings context.

@@ -1,4 +1,4 @@
-import { RoomReactionEvent } from '@ably/chat';
+import type { RoomReactionEvent } from '@ably/chat';
 import { useRoomReactions } from '@ably/chat/react';
 import { clsx } from 'clsx';
 import React, { useCallback, useEffect, useRef, useState } from 'react';

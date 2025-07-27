@@ -1,4 +1,5 @@
-import { ChatMessageEvent, ChatMessageEventType, Message, PaginatedResult } from '@ably/chat';
+import { ChatMessageEventType } from '@ably/chat';
+import type { ChatMessageEvent, Message, PaginatedResult } from '@ably/chat';
 import { useMessages, useRoom } from '@ably/chat/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

@@ -1,4 +1,4 @@
-import { PresenceMember } from '@ably/chat';
+import type { PresenceMember } from '@ably/chat';
 import { usePresenceListener } from '@ably/chat/react';
 import { clsx } from 'clsx';
 import React, { useEffect, useState } from 'react';
