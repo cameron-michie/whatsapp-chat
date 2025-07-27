@@ -159,7 +159,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         console.log(`Loading ${roomEntries.length} rooms with profile data`);
         
         // Process rooms in parallel for better performance
-        const roomPromises = roomEntries.map(async ([roomId, roomMap]) => {
+        const roomPromises = (roomEntries as [string, any][]).map(async ([roomId, roomMap]: [string, any]) => {
           console.log(`Processing room entry: ${roomId}`, roomMap);
           if (roomMap) {
             const roomData = await extractRoomData(roomId, roomMap);
@@ -172,7 +172,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         
         results.forEach((result) => {
           if (result) {
-            const [roomId, roomData] = result;
+            const [roomId, roomData] = result as [string, RoomData];
             allRooms[roomId] = roomData;
           }
         });
@@ -224,9 +224,9 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
 
         // Also subscribe to individual room objects for real-time updates
         for (const [roomId, roomMap] of root.entries()) {
-          if (roomMap && typeof roomMap.subscribe === 'function') {
+          if (roomMap && typeof (roomMap as any).subscribe === 'function') {
             console.log(`Subscribing to room: ${roomId}`);
-            roomMap.subscribe((roomUpdate: any) => {
+            (roomMap as any).subscribe((roomUpdate: any) => {
               console.log(`=== ROOM ${roomId} UPDATE ===`);
               console.log('Room update:', roomUpdate);
 
@@ -267,7 +267,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         const roomMap = root.get(activeRoomId);
 
         if (roomMap) {
-          const unreadCounter = roomMap.get('unreadMessageCount');
+          const unreadCounter = (roomMap as any).get('unreadMessageCount');
 
           if (unreadCounter !== undefined) {
             // Remove counter regardless of type (number, object, or LiveCounter)
@@ -312,7 +312,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         const roomMap = root.get(activeRoomId);
 
         if (roomMap) {
-          const unreadCounter = roomMap.get('unreadMessageCount');
+          const unreadCounter = (roomMap as any).get('unreadMessageCount');
           
           if (unreadCounter !== undefined) {
             console.log(`⚡ Resetting counter due to ${reason.toLowerCase()} for room: ${activeRoomId}`);
@@ -497,9 +497,9 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         enableEvents: true,
         subscribe: false
       },
-      typing: {
-        timeoutMs: 10000
-      },
+      // typing: {
+      //   timeoutMs: 10000
+      // },
       // Ensure room gets released properly to avoid conflicts
       release: true
     }
