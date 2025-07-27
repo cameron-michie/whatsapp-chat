@@ -160,7 +160,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
                       onClick={() => handleStartChat(onlineUser)}
                       onLeave={() => {}} // No leave function for online users
                       userId={user?.id}
-                      userFullName={user?.fullName}
+                      userFullName={user?.fullName || undefined}
                       participantUserId={onlineUser.userId}
                     />
                   </div>
@@ -241,7 +241,7 @@ export const OnlinePresence: React.FC<OnlinePresenceProps> = ({ onClose, inlineM
                 onClick={() => handleStartChat(onlineUser)}
                 onLeave={() => {}} // No leave function for online users
                 userId={user?.id}
-                userFullName={user?.fullName}
+                userFullName={user?.fullName || undefined}
                 participantUserId={onlineUser.userId}
               />
             ))

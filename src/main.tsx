@@ -95,7 +95,7 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
   clientId,
   activeRoomId,
   handleRoomSelect,
-  isHomePage,
+  // isHomePage,
 }) => {
   // Update user profile on login
   useProfileUpdater();
@@ -148,7 +148,7 @@ const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
                     <RoomsList
                       userId={userId}
                       onRoomSelect={handleRoomSelect}
-                      activeRoomId={activeRoomId}
+                      activeRoomId={activeRoomId || undefined}
                     />
                   </ChannelProvider>
                 </div>

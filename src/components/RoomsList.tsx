@@ -3,7 +3,7 @@ import { useChannel, usePresenceListener } from 'ably/react';
 import { useUser } from '@clerk/clerk-react';
 import { Sidebar } from '../ably-ui-kits/components/molecules';
 import { useProfile } from '../contexts/ProfileContext';
-import { useRoomParticipants } from '../hooks/useRoomParticipants';
+// import { useRoomParticipants } from '../hooks/useRoomParticipants';
 import { parseDMRoomId } from '../utils/roomId';
 import { UserProfileHeader } from './UserProfileHeader';
 
@@ -37,8 +37,8 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   const [isLoading, setIsLoading] = useState(true);
   const { channel } = useChannel(`roomslist:${userId}`);
   const { user } = useUser();
-  const { getUserName, getUserAvatar } = useProfile();
-  const { getRoomDisplayInfo } = useRoomParticipants();
+  const { getUserName } = useProfile();
+  // const { getRoomDisplayInfo } = useRoomParticipants();
   const { presenceData } = usePresenceListener('presence');
   
   // Track online users from presence
@@ -485,7 +485,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     setActiveRoom: handleRoomSelect,
     leaveRoom: handleLeaveRoom,
     userId,
-    userFullName: user?.fullName,
+    userFullName: user?.fullName || undefined,
     className: "h-full",
     defaultRoomOptions: {
       // Configure Chat SDK room options consistently

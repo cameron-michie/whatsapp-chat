@@ -76,7 +76,7 @@ export const RoomList = ({
   roomNames,
   rooms,
   activeRoomName,
-  defaultRoomOptions,
+  // defaultRoomOptions,
   onSelect,
   onLeave,
   isCollapsed = false,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatWindow as ChatWindowUI } from '../ably-ui-kits/components/molecules';
-import { ChatRoomProvider, useRoom, useMessages } from '@ably/chat/react';
+import { ChatRoomProvider, useMessages } from '@ably/chat/react';
 import { useUser } from '@clerk/clerk-react';
 import { useAvatarProfileSync } from '../hooks/useAvatarProfileSync';
 import { useProfile } from '../contexts/ProfileContext';

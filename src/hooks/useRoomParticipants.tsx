@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useProfile } from '../contexts/ProfileContext';
 import { parseDMRoomId } from '../utils/roomId';
 

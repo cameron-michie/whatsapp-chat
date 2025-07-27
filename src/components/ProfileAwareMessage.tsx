@@ -26,7 +26,7 @@ export const ProfileAwareMessage: React.FC<ProfileAwareMessageProps> = (props) =
   const { getUserName, getUserAvatar, fetchProfile } = useProfile();
   
   // Use profile-aware avatar for this message
-  const { userAvatar } = useProfileAwareAvatar({
+  const { /* userAvatar */ } = useProfileAwareAvatar({
     clientId: props.message.clientId,
     displayName: undefined,
     getUserName,

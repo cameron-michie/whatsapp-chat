@@ -83,7 +83,7 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
               onClick={() => {}} // No click action for profile display
               onLeave={() => {}} // No leave action for profile
               userId={userId}
-              userFullName={user?.fullName}
+              userFullName={user?.fullName || undefined}
             />
 
             {/* Profile Details */}
@@ -184,7 +184,7 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
             onClick={() => setShowProfileModal(true)}
             onLeave={() => {}} // No leave action for current user
             userId={userId}
-            userFullName={user?.fullName}
+            userFullName={user?.fullName || undefined}
           />
         </div>
       </div>

@@ -123,36 +123,36 @@ function formatSingleName(participant: string): string {
 /**
  * Format message preview with sender name
  */
-function formatMessagePreview(
-  latestMessagePreview: string,
-  latestMessageSender: string,
-  currentUserName?: string
-): string {
-  if (!latestMessagePreview) return 'No messages yet';
+// function formatMessagePreview(
+//   latestMessagePreview: string,
+//   latestMessageSender: string,
+//   currentUserName?: string
+// ): string {
+//   if (!latestMessagePreview) return 'No messages yet';
 
-  // Determine sender display name
-  let senderName = 'Someone';
-  if (latestMessageSender) {
-    if (currentUserName && latestMessageSender.replace(/\s+/g, '_') === currentUserName.replace(/\s+/g, '_')) {
-      senderName = 'You';
-    } else {
-      // Remove user_ prefix if it exists
-      const cleanSender = latestMessageSender.startsWith('user_')
-        ? latestMessageSender.substring(5)
-        : latestMessageSender;
-      const [firstName] = cleanSender.split('_');
-      senderName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-    }
-  }
+//   // Determine sender display name
+//   let senderName = 'Someone';
+//   if (latestMessageSender) {
+//     if (currentUserName && latestMessageSender.replace(/\s+/g, '_') === currentUserName.replace(/\s+/g, '_')) {
+//       senderName = 'You';
+//     } else {
+//       // Remove user_ prefix if it exists
+//       const cleanSender = latestMessageSender.startsWith('user_')
+//         ? latestMessageSender.substring(5)
+//         : latestMessageSender;
+//       const [firstName] = cleanSender.split('_');
+//       senderName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+//     }
+//   }
 
-  // Truncate long messages
-  const maxLength = 40;
-  const truncatedMessage = latestMessagePreview.length > maxLength
-    ? latestMessagePreview.substring(0, maxLength) + '...'
-    : latestMessagePreview;
+//   // Truncate long messages
+//   const maxLength = 40;
+//   const truncatedMessage = latestMessagePreview.length > maxLength
+//     ? latestMessagePreview.substring(0, maxLength) + '...'
+//     : latestMessagePreview;
 
-  return `${senderName}: ${truncatedMessage}`;
-}
+//   return `${senderName}: ${truncatedMessage}`;
+// }
 
 /**
  * Props for the RoomListItem component
@@ -275,9 +275,9 @@ export const RoomListItem = React.memo(function RoomListItem({
   isSelected,
   onClick,
   onLeave,
-  avatar: propAvatar,
+  // avatar: propAvatar,
   isCollapsed = false,
-  typingIndicatorsEnabled = true,
+  // typingIndicatorsEnabled = true,
   userId,
   userFullName,
   participantUserId,
@@ -316,7 +316,7 @@ export const RoomListItem = React.memo(function RoomListItem({
   const timestamp = roomData?.latestMessageTimestamp;
 
   console.log("participant user id", participantUserId);
-  console.log("useProfile(particpantuserid)", getProfile(participantUserId));
+  console.log("useProfile(particpantuserid)", participantUserId ? getProfile(participantUserId) : null);
 
   // Create avatar data with profile priority: propAvatar > profile > roomData > fallback
   const roomAvatarData = {
@@ -328,8 +328,8 @@ export const RoomListItem = React.memo(function RoomListItem({
 
   // Enhanced presence indicators: online status or unread messages
   const isOnline = roomData?.isOnline || false;
-  const hasUnreadMessages = unreadCount > 0;
-  const isActive = isOnline || hasUnreadMessages; // Show as active if online OR has unread messages
+  // const hasUnreadMessages = unreadCount > 0;
+  // const isActive = isOnline || hasUnreadMessages; // Show as active if online OR has unread messages
 
   // If collapsed, render just the avatar with selection indicator
   if (isCollapsed) {
