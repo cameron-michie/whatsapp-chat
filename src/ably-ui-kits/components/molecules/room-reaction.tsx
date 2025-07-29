@@ -1,5 +1,5 @@
 import type { RoomReactionEvent } from '@ably/chat';
-import { useRoomReactions, useRoom } from '@ably/chat/react';
+import { useRoomReactions } from '@ably/chat/react';
 import { clsx } from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -113,7 +113,7 @@ export const RoomReaction = ({
   const longPressTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const isLongPressRef = useRef(false);
 
-  const { send } = useRoomReactions({
+  const { sendRoomReaction } = useRoomReactions({
     listener: (reaction: RoomReactionEvent) => {
       if (reaction.reaction.isSelf) {
         // If the reaction is from ourselves, we don't need to show the burst animation
@@ -166,18 +166,18 @@ export const RoomReaction = ({
    *
    * @param emoji - The emoji reaction to send to the room
    */
-  const sendRoomReaction = useCallback(
+  const sendRoomReactionThrottled = useCallback(
     (emoji: string): void => {
-      send({ name: emoji }).catch((error: unknown) => {
+      sendRoomReaction({ name: emoji }).catch((error: unknown) => {
         console.error('Failed to send room reaction:', error);
       });
     },
-    [send]
+    [sendRoomReaction]
   );
 
   // Create throttled version of the send function to avoid excessive network calls
   // Limits to maximum 1 reaction per 200ms while preserving immediate visual feedback
-  const throttledSendReaction = useThrottle(sendRoomReaction, 200);
+  const throttledSendReaction = useThrottle(sendRoomReactionThrottled, 200);
 
   /**
    * Handles sending a room reaction with immediate visual feedback and throttled network call.

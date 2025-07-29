@@ -148,7 +148,7 @@ export const MessageInput = ({
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { keystroke, stop } = useTyping();
-  const { send } = useMessages();
+  const { sendMessage } = useMessages();
   const room = useRoom();
   const { user } = useUser();
 
@@ -179,7 +179,7 @@ export const MessageInput = ({
 
       console.log("Sending chat message...");
       // Send message with recipients metadata (keep for Lambda backup)
-      send({
+      sendMessage({
         text: trimmedMessage,
         metadata: {
           recipients: recipients.join(',')
@@ -214,7 +214,7 @@ export const MessageInput = ({
         hasUser: !!user
       });
     }
-  }, [send, stop, onSent, onSendError, enableTyping, room, user]);
+  }, [sendMessage, stop, onSent, onSendError, enableTyping, room, user]);
 
   /**
    * Handles changes to the input field

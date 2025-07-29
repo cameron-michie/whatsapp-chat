@@ -86,8 +86,6 @@ export const ChatWindow: React.FC = () => {
     <ChatRoomProvider
       key={roomId}
       name={roomId}
-      attach={true}
-      release={true}
       options={{
         occupancy: { enableEvents: true },
       }}

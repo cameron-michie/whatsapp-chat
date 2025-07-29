@@ -284,7 +284,7 @@ export const ChatWindow = ({
 
   const {
     deleteMessage,
-    update: updateMessageRemote,
+    updateMessage: updateMessageRemote,
     sendReaction,
     deleteReaction,
   } = useMessages();
