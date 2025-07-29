@@ -1,5 +1,5 @@
 import type { ErrorInfo, Message } from '@ably/chat';
-import { useTyping, useRoom } from '@ably/chat/react';
+import { useMessages, useTyping, useRoom } from '@ably/chat/react';
 import { useUser } from '@clerk/clerk-react';
 import React, { useCallback, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
@@ -148,7 +148,7 @@ export const MessageInput = ({
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { keystroke, stop } = useTyping();
-  // const { send } = useMessages(); // API changed - use room.messages.send instead
+  const { send } = useMessages();
   const room = useRoom();
   const { user } = useUser();
 
@@ -179,9 +179,13 @@ export const MessageInput = ({
 
       console.log("Sending chat message...");
       // Send message with recipients metadata (keep for Lambda backup)
-      // TODO: room.send API changed - need to implement proper message sending  
-      Promise.resolve({ serial: Date.now().toString(), text: trimmedMessage })
-        .then(async (sentMessage: any) => {
+      send({
+        text: trimmedMessage,
+        metadata: {
+          recipients: recipients.join(',')
+        }
+      })
+        .then(async (sentMessage) => {
           console.log("Chat message sent successfully:", sentMessage.serial);
           
           onSent?.(sentMessage);
@@ -210,7 +214,7 @@ export const MessageInput = ({
         hasUser: !!user
       });
     }
-  }, [stop, onSent, onSendError, enableTyping, room, user]);
+  }, [send, stop, onSent, onSendError, enableTyping, room, user]);
 
   /**
    * Handles changes to the input field

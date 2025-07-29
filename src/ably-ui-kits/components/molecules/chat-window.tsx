@@ -284,7 +284,7 @@ export const ChatWindow = ({
 
   const {
     deleteMessage,
-    // update: updateMessageRemote, // API changed
+    update: updateMessageRemote,
     sendReaction,
     deleteReaction,
   } = useMessages();
@@ -307,12 +307,11 @@ export const ChatWindow = ({
   );
 
   const handleMessageEdit = useCallback(
-    (msg: Message, _newText: string) => {
-      // const updated = msg.copy({ text: newText, metadata: msg.metadata, headers: msg.headers });
+    (msg: Message, newText: string) => {
+      const updated = msg.copy({ text: newText, metadata: msg.metadata, headers: msg.headers });
 
-      // updateMessageRemote(msg.serial, updated) // API changed - need to use room.messages.update
-      Promise.resolve() // Placeholder - message update API needs to be implemented
-        .then(() => handleRESTMessageUpdate(msg))
+      updateMessageRemote(msg.serial, updated)
+        .then(handleRESTMessageUpdate)
         .catch((error: unknown) => {
           if (errorHandling?.onEditError) {
             errorHandling.onEditError(error as ErrorInfo, msg);
@@ -321,7 +320,7 @@ export const ChatWindow = ({
           }
         });
     },
-    [handleRESTMessageUpdate, errorHandling]
+    [updateMessageRemote, handleRESTMessageUpdate, errorHandling]
   );
 
   const handleMessageDelete = useCallback(

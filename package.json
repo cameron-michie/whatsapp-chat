@@ -17,10 +17,10 @@
     "prune": "ts-prune"
   },
   "dependencies": {
-    "@ably/chat": "^0.11.0",
-    "@ably/chat-react-ui-components": "^0.1.1",
+    "@ably/chat": "^0.10.0",
     "@clerk/clerk-react": "^5.35.3",
     "ably": "^2.10.1",
+    "clsx": "^2.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.7.0"

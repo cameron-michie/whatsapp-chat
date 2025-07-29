@@ -113,8 +113,7 @@ export const RoomReaction = ({
   const longPressTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const isLongPressRef = useRef(false);
 
-  const room = useRoom();
-  const { /* send */ } = useRoomReactions({
+  const { send } = useRoomReactions({
     listener: (reaction: RoomReactionEvent) => {
       if (reaction.reaction.isSelf) {
         // If the reaction is from ourselves, we don't need to show the burst animation
@@ -168,13 +167,12 @@ export const RoomReaction = ({
    * @param emoji - The emoji reaction to send to the room
    */
   const sendRoomReaction = useCallback(
-    (_emoji: string): void => {
-      // TODO: room.sendReaction API changed - need to implement proper reaction sending
-      Promise.resolve().catch((error: unknown) => {
+    (emoji: string): void => {
+      send({ name: emoji }).catch((error: unknown) => {
         console.error('Failed to send room reaction:', error);
       });
     },
-    [room]
+    [send]
   );
 
   // Create throttled version of the send function to avoid excessive network calls
