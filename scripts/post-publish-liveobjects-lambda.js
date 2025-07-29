@@ -3,7 +3,7 @@ export const handler = async (event) => {
     // Debug: Log the complete incoming request structure
     console.log('=== INCOMING WEBHOOK PAYLOAD ===');
     console.log('Full event:', JSON.stringify(event, null, 2));
-    
+
     // Parse the incoming webhook payload
     let payload;
     if (event.body) {
@@ -13,15 +13,15 @@ export const handler = async (event) => {
       // Direct Lambda invocation or test event
       payload = event;
     }
-    
+
     console.log('Parsed payload:', JSON.stringify(payload, null, 2));
-    
+
     // Extract webhook details
     const { source, appId, channel, messages } = payload;
-    
+
     console.log(`Processing webhook: source=${source}, appId=${appId}, channel=${channel}`);
     console.log(`Messages array length: ${messages?.length || 0}`);
-    
+
     if (!messages || messages.length === 0) {
       console.log('No messages to process');
       return {
@@ -29,18 +29,18 @@ export const handler = async (event) => {
         body: JSON.stringify({ status: 'success', message: 'No messages to process' })
       };
     }
-    
+
     // Process each message
     for (const [index, rawMessage] of messages.entries()) {
       console.log(`Processing message ${index + 1}:`, JSON.stringify(rawMessage, null, 2));
-      
+
       // Extract message details
-      const { data, name, timestamp, clientId } = rawMessage;
-      
+      const { data, name, timestamp, clientId, summary, action } = rawMessage;
+
       // Parse the JSON data string
       let parsedData = {};
       let messageText = '';
-      
+
       try {
         if (typeof data === 'string') {
           parsedData = JSON.parse(data);
@@ -54,57 +54,89 @@ export const handler = async (event) => {
         console.log('Raw data:', data);
         continue;
       }
-      
+
+      // Check for reactions in summary and determine if this is a reaction event
+      let hasReactions = false;
+      let isReactionEvent = false;
+      let reactionPreview = '';
+
+      if (summary && summary['reaction:distinct.v1']) {
+        hasReactions = true;
+        const reactions = summary['reaction:distinct.v1'];
+
+        // Detect reaction events: action 4 (update) with reactions but same message content
+        // This indicates someone added a reaction to an existing message
+        if (action === 4 && hasReactions) {
+          isReactionEvent = true;
+          // Create reaction preview format: "Name reacted 🙌 to `original message`"
+          const senderName = clientId.includes('.') ? clientId.split('.')[0].replace('_', ' ') : clientId;
+          const reactionEmojis = Object.keys(reactions);
+          const latestEmoji = reactionEmojis[reactionEmojis.length - 1]; // Get the most recent reaction
+
+          // Create the reaction message preview
+          const truncatedMessage = messageText.length > 30 ? messageText.substring(0, 27) + '...' : messageText;
+          reactionPreview = ` reacted ${latestEmoji} to "${truncatedMessage}"`;
+          console.log(`Detected reaction event: ${reactionPreview}`);
+        } else {
+          // Regular message with reactions - format as before
+          const reactionEntries = Object.entries(reactions).map(([emoji, data]) => {
+            return `${emoji}(${data.total})`;
+          });
+          reactionPreview = reactionEntries.join(' ');
+          console.log(`Message has reactions: ${reactionPreview}`);
+        }
+      }
+
       console.log(`Parsed data:`, JSON.stringify(parsedData, null, 2));
       console.log(`Message text: "${messageText}"`);
       console.log(`Sender (clientId): ${clientId}`);
       console.log(`Channel: ${channel}`);
-      
+
       // Extract room ID from channel name (remove ::$chat suffix)
       const roomId = channel.replace(/::?\$chat$/, '');
       console.log(`Extracted room ID: ${roomId}`);
-      
+
       // Extract recipients from parsed metadata
       let recipients = [];
-      
+
       if (parsedData.metadata && parsedData.metadata.recipients) {
         const recipientsStr = parsedData.metadata.recipients;
         if (recipientsStr && recipientsStr.trim() !== '') {
-          recipients = Array.isArray(recipientsStr) 
-            ? recipientsStr 
+          recipients = Array.isArray(recipientsStr)
+            ? recipientsStr
             : recipientsStr.split(',').map(r => r.trim()).filter(r => r);
         }
       }
-      
+
       console.log('Recipients extraction debug:', {
         hasMetadata: !!parsedData.metadata,
         rawRecipients: parsedData.metadata?.recipients,
         recipientsType: typeof parsedData.metadata?.recipients,
         finalRecipients: recipients
       });
-      
+
       console.log('Recipients:', recipients);
-      
+
       if (recipients.length > 0) {
         // Update LiveObjects for each recipient
-        await updateLiveObjectsForRecipients(recipients, roomId, messageText, clientId, timestamp);
+        await updateLiveObjectsForRecipients(recipients, roomId, messageText, clientId, timestamp, hasReactions, reactionPreview, isReactionEvent);
       } else {
         console.log('No recipients found - skipping LiveObjects update');
       }
     }
-    
+
     return {
       statusCode: 200,
       body: JSON.stringify({ status: 'success', processed: messages.length })
     };
-    
+
   } catch (error) {
     console.error('Error in post-publish handler:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ 
-        status: 'error', 
-        message: 'Internal server error during post-publish processing' 
+      body: JSON.stringify({
+        status: 'error',
+        message: 'Internal server error during post-publish processing'
       })
     };
   }
@@ -113,7 +145,7 @@ export const handler = async (event) => {
 // Helper function to make Ably REST API requests
 async function makeAblyRequest(url, operations, apiKey) {
   const isArray = Array.isArray(operations);
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -122,35 +154,45 @@ async function makeAblyRequest(url, operations, apiKey) {
     },
     body: JSON.stringify(operations)
   });
-  
+
   if (!response.ok) {
     const errorResponse = await response.json();
     throw new Error(`Ably API error: ${response.status} - ${JSON.stringify(errorResponse)}`);
   }
-  
+
   return await response.json();
 }
 
-async function updateLiveObjectsForRecipients(recipients, roomId, messageText, senderId, messageTimestamp) {
+async function updateLiveObjectsForRecipients(recipients, roomId, messageText, senderId, messageTimestamp, hasReactions = false, reactionPreview = '', isReactionEvent = false) {
   const ABLY_API_KEY = "ALwA2Q.4QI37w:D_h8yJGTdcH5Xp8ZB9d7Tt9Zbp7QjfuXTdAL3HLBV1Y";
   const timestamp = messageTimestamp ? messageTimestamp.toString() : Date.now().toString();
   const DEBUG = process.env.DEBUG_ENABLED === 'true';
-  const log = DEBUG ? console.log : () => {};
-  
-  console.log(`🚀 Processing ${recipients.length} recipients in parallel`);
-  
-  // Create message preview (first 50 characters)
-  const messagePreview = messageText.length > 50 ? messageText.substring(0, 47) + '...' : messageText;
-  
+  const log = DEBUG ? console.log : () => { };
+
+  console.log(`🚀 Processing ${recipients.length} recipients in parallel (isReactionEvent: ${isReactionEvent})`);
+
+  // Create message preview based on event type
+  let messagePreview;
+  if (isReactionEvent) {
+    // For reaction events, use the reaction preview format
+    messagePreview = reactionPreview;
+  } else {
+    // For regular messages, truncate and optionally add reactions
+    messagePreview = messageText.length > 50 ? messageText.substring(0, 47) + '...' : messageText;
+    if (hasReactions && reactionPreview && !isReactionEvent) {
+      messagePreview = `${messagePreview} • ${reactionPreview}`;
+    }
+  }
+
   // Group recipients by user to batch room existence checks
   const uniqueUsers = [...new Set(recipients.map(r => r.trim()))];
-  
+
   // Batch check room existence for all users in parallel
   const roomExistenceChecks = await Promise.allSettled(
     uniqueUsers.map(async (userId) => {
       const channelName = `roomslist:${userId}`;
       const url = `https://main.realtime.ably.net/channels/${encodeURIComponent(channelName)}/objects`;
-      
+
       try {
         const rootResponse = await fetch(`${url}/root`, {
           method: 'GET',
@@ -159,21 +201,21 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
             'Content-Type': 'application/json'
           }
         });
-        
+
         if (!rootResponse.ok) {
           return { userId, exists: false, url, error: `Status: ${rootResponse.status}` };
         }
-        
+
         const rootData = await rootResponse.json();
         const roomExists = !!rootData.map?.entries?.[roomId]?.data?.objectId;
-        
+
         return { userId, exists: roomExists, url, rootData };
       } catch (error) {
         return { userId, exists: false, url, error: error.message };
       }
     })
   );
-  
+
   // Create lookup map for room existence
   const roomExistenceMap = new Map();
   roomExistenceChecks.forEach((result) => {
@@ -183,40 +225,40 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
       console.error(`❌ Failed to check room existence:`, result.reason);
     }
   });
-  
+
   // Process all recipients in parallel
   const updatePromises = recipients.map(async (recipientId) => {
     const trimmedId = recipientId.trim();
     const roomInfo = roomExistenceMap.get(trimmedId);
-    
+
     if (!roomInfo) {
       console.error(`❌ No room info for recipient ${trimmedId}`);
       return { recipientId: trimmedId, success: false, error: 'No room info' };
     }
-    
+
     try {
       if (roomInfo.exists) {
         log(`📝 Updating existing room for recipient: ${trimmedId}`);
-        return await updateExistingRoom(roomInfo.url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, trimmedId);
+        return await updateExistingRoom(roomInfo.url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, trimmedId, isReactionEvent);
       } else {
         log(`🏗️ Creating new room for recipient: ${trimmedId}`);
-        return await createNewRoom(roomInfo.url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, trimmedId);
+        return await createNewRoom(roomInfo.url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, trimmedId, isReactionEvent);
       }
     } catch (error) {
       console.error(`❌ Error processing recipient ${trimmedId}:`, error.message);
       return { recipientId: trimmedId, success: false, error: error.message };
     }
   });
-  
+
   // Wait for all updates to complete
   const results = await Promise.allSettled(updatePromises);
-  
+
   // Log summary
   const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
   const failed = results.length - successful;
-  
+
   console.log(`✅ Completed: ${successful} successful, ${failed} failed out of ${recipients.length} recipients`);
-  
+
   if (failed > 0) {
     const failures = results
       .filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success))
@@ -226,7 +268,16 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
 }
 
 // Optimized function to update existing room
-async function updateExistingRoom(url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, recipientId) {
+async function updateExistingRoom(url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, recipientId, isReactionEvent = false) {
+  // Extract user ID from senderId (remove prefix if present)
+  const senderUserId = senderId.includes('.') ? senderId.split('.')[1] : senderId;
+  const recipientUserId = recipientId.includes('.') ? recipientId.split('.')[1] : recipientId;
+
+  // Don't increment unread counter for the sender themselves OR for reaction events
+  const shouldIncrementCounter = (senderUserId !== recipientUserId) && !isReactionEvent;
+
+  console.log(`📨 Processing recipient ${recipientId}: sender=${senderUserId}, recipient=${recipientUserId}, isReactionEvent=${isReactionEvent}, incrementCounter=${shouldIncrementCounter}`);
+
   const updates = [
     {
       operation: "MAP_SET",
@@ -234,7 +285,7 @@ async function updateExistingRoom(url, roomId, messagePreview, senderId, timesta
       data: { key: "latestMessagePreview", value: { string: messagePreview } }
     },
     {
-      operation: "MAP_SET", 
+      operation: "MAP_SET",
       path: `${roomId}`,
       data: { key: "latestMessageSender", value: { string: senderId } }
     },
@@ -247,93 +298,58 @@ async function updateExistingRoom(url, roomId, messagePreview, senderId, timesta
       operation: "MAP_SET",
       path: `${roomId}`,
       data: { key: "participants", value: { string: recipients.join(',') } }
-    },
-    {
+    }
+  ];
+
+  // Only increment unread counter if recipient is not the sender
+  if (shouldIncrementCounter) {
+    updates.push({
       operation: "COUNTER_INC",
       path: `${roomId}.unreadMessageCount`,
       data: { number: 1 }
-    }
-  ];
-  
+    });
+  }
+
   try {
     // Try batch update first
     const batchResponse = await makeAblyRequest(url, updates, ABLY_API_KEY);
     return { recipientId, success: true, method: 'batch' };
-    
+
   } catch (batchError) {
     // Handle counter creation if needed
     const counterOperation = updates.find(op => op.operation === 'COUNTER_INC');
     let counterCreateNeeded = false;
-    
+
     if (counterOperation && batchError.message.includes('unreadMessageCount')) {
-      console.log(`🔍 Batch failed due to counter issue, attempting to fix for ${recipientId}`);
-      
       try {
-        // First, verify the room still exists and is valid
-        console.log(`🔍 Verifying room map exists for ${recipientId}`);
-        const verifyResponse = await fetch(`${url}/root`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Basic ${Buffer.from(ABLY_API_KEY).toString('base64')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!verifyResponse.ok) {
-          throw new Error(`Room verification failed: ${verifyResponse.status}`);
-        }
-        
-        const verifyData = await verifyResponse.json();
-        const roomStillExists = !!verifyData.map?.entries?.[roomId]?.data?.objectId;
-        
-        if (!roomStillExists) {
-          console.log(`⚠️ Room ${roomId} no longer exists for ${recipientId}, creating new room instead`);
-          // Room was deleted, create new room entirely
-          // Extract data from the failed updates to recreate room
-          const messagePreview = updates.find(op => op.data?.key === 'latestMessagePreview')?.data?.value?.string || 'New message';
-          const messageSender = updates.find(op => op.data?.key === 'latestMessageSender')?.data?.value?.string || 'Unknown';
-          const messageTimestamp = updates.find(op => op.data?.key === 'latestMessageTimestamp')?.data?.value?.string || Date.now().toString();
-          const participants = updates.find(op => op.data?.key === 'participants')?.data?.value?.string?.split(',') || [recipientId];
-          
-          console.log(`🏗️ Recreating room with: preview="${messagePreview}", sender="${messageSender}", participants=[${participants.join(',')}]`);
-          
-          const newRoomResult = await createNewRoom(url, roomId, messagePreview, messageSender, messageTimestamp, participants, ABLY_API_KEY, recipientId);
-          
-          return newRoomResult;
-        }
-        
-        // Room exists, try to create just the counter
-        console.log(`🏗️ Creating counter for existing room ${roomId}`);
         const createCounterOperation = {
           operation: "COUNTER_CREATE",
           path: `${roomId}.unreadMessageCount`,
-          data: { number: 1 }
+          data: { number: shouldIncrementCounter ? 1 : 0 }
         };
-        
+
         await makeAblyRequest(url, createCounterOperation, ABLY_API_KEY);
-        console.log(`✅ Successfully created counter for ${recipientId}`);
         counterCreateNeeded = true;
-        
+
       } catch (createError) {
-        console.error(`❌ Failed to fix counter issue for ${recipientId}:`, createError.message);
-        console.log(`🔄 Falling back to individual operations without counter for ${recipientId}`);
+        console.error(`❌ Failed to create counter for ${recipientId}:`, createError.message);
       }
     }
-    
+
     // Send remaining operations individually
-    const operationsToSend = counterCreateNeeded 
+    const operationsToSend = counterCreateNeeded
       ? updates.filter(op => op.operation !== 'COUNTER_INC')
       : updates;
-    
+
     const individualResults = await Promise.allSettled(
       operationsToSend.map(update => makeAblyRequest(url, update, ABLY_API_KEY))
     );
-    
+
     const failed = individualResults.filter(r => r.status === 'rejected').length;
-    
-    return { 
-      recipientId, 
-      success: failed === 0, 
+
+    return {
+      recipientId,
+      success: failed === 0,
       method: 'individual',
       failed,
       total: operationsToSend.length
@@ -342,7 +358,16 @@ async function updateExistingRoom(url, roomId, messagePreview, senderId, timesta
 }
 
 // Optimized function to create new room
-async function createNewRoom(url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, recipientId) {
+async function createNewRoom(url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, recipientId, isReactionEvent = false) {
+  // Extract user ID from senderId (remove prefix if present)
+  const senderUserId = senderId.includes('.') ? senderId.split('.')[1] : senderId;
+  const recipientUserId = recipientId.includes('.') ? recipientId.split('.')[1] : recipientId;
+
+  // Don't increment unread counter for the sender themselves OR for reaction events
+  const shouldIncrementCounter = (senderUserId !== recipientUserId) && !isReactionEvent;
+
+  console.log(`🏗️ Creating room for recipient ${recipientId}: sender=${senderUserId}, recipient=${recipientUserId}, isReactionEvent=${isReactionEvent}, incrementCounter=${shouldIncrementCounter}`);
+
   const createOperations = [
     {
       operation: "MAP_CREATE",
@@ -360,22 +385,22 @@ async function createNewRoom(url, roomId, messagePreview, senderId, timestamp, r
     {
       operation: "COUNTER_CREATE",
       path: `${roomId}.unreadMessageCount`,
-      data: { number: 1 }
+      data: { number: shouldIncrementCounter ? 1 : 0 }
     }
   ];
-  
+
   try {
     // Create room first
     await makeAblyRequest(url, createOperations[0], ABLY_API_KEY);
-    
+
     // Small delay to ensure room is ready (optimized from 100ms)
     await new Promise(resolve => setTimeout(resolve, 50));
-    
+
     // Create counter
     await makeAblyRequest(url, createOperations[1], ABLY_API_KEY);
-    
+
     return { recipientId, success: true, method: 'create' };
-    
+
   } catch (error) {
     return { recipientId, success: false, method: 'create', error: error.message };
   }
@@ -385,19 +410,19 @@ async function createNewRoom(url, roomId, messagePreview, senderId, timestamp, r
 // NOTE: This function is deprecated in favor of the optimized createNewRoom function
 async function createLiveObjectForRecipient(recipientId, roomId, messagePreview, senderId, timestamp, recipients) {
   console.log(`⚠️ Using legacy createLiveObjectForRecipient - consider updating to use createNewRoom`);
-  
+
   const ABLY_API_KEY = "ALwA2Q.4QI37w:D_h8yJGTdcH5Xp8ZB9d7Tt9Zbp7QjfuXTdAL3HLBV1Y";
   const channelName = `roomslist:${recipientId.trim()}`;
   const url = `https://main.realtime.ably.net/channels/${encodeURIComponent(channelName)}/objects`;
-  
+
   // Use the optimized createNewRoom function
   const result = await createNewRoom(url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, recipientId);
-  
+
   if (!result.success) {
     console.error(`❌ Legacy room creation failed for ${recipientId}:`, result.error);
   } else {
     console.log(`✅ Legacy room creation succeeded for ${recipientId}`);
   }
-  
+
   return result;
 }
