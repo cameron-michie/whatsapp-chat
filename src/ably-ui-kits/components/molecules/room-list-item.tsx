@@ -310,18 +310,18 @@ export const RoomListItem = React.memo(function RoomListItem({
   React.useEffect(() => {
     const currentDisplayName = profileName || roomData?.displayName ||
       (roomData ? formatParticipantNames(roomData.participants, userId || '', userFullName, roomName) : roomName);
-    
+
     // Check if the display name is showing as user_... format (indicating we need profile data)
-    if (currentDisplayName.startsWith('user_') || 
-        (currentDisplayName.match(/^User$/i) && otherUser)) {
+    if (currentDisplayName.startsWith('user_') ||
+      (currentDisplayName.match(/^User$/i) && otherUser)) {
       console.log(`[RoomListItem] Display name shows as "${currentDisplayName}", needs profile data`);
-      
+
       // Extract user ID from the display name if it starts with user_
       let targetUserId = otherUser;
       if (currentDisplayName.startsWith('user_')) {
         targetUserId = currentDisplayName.substring(5); // Remove "user_" prefix
       }
-      
+
       if (targetUserId && !getProfile(targetUserId)) {
         console.log(`[RoomListItem] Fetching profile for: ${targetUserId}`);
         fetchProfile(targetUserId);
@@ -339,9 +339,6 @@ export const RoomListItem = React.memo(function RoomListItem({
 
   const unreadCount = roomData?.unreadMessageCount || 0;
   const timestamp = roomData?.latestMessageTimestamp;
-
-  console.log("participant user id", participantUserId);
-  console.log("useProfile(particpantuserid)", participantUserId ? getProfile(participantUserId) : null);
 
   // Create avatar data with profile priority: propAvatar > profile > roomData > fallback
   const roomAvatarData = {

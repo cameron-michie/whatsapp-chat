@@ -30,14 +30,12 @@ const ChatWindowContent: React.FC<{ roomId: string }> = ({ roomId }) => {
         return profileName !== otherUserId ? profileName : otherUserId;
       }
     }
-    
+
     // Fallback to room ID for non-DM rooms or if parsing fails
     return roomId;
   };
 
   const displayName = getDisplayName();
-
-  console.log('ChatWindowContent render:', { roomId, displayName, hasMessages: !!messages });
 
   return (
     <ChatWindowUI

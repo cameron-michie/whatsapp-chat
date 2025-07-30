@@ -102,8 +102,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
       }
 
       const data = await response.json();
-      console.log(`Profile data received for ${targetUserId}:`, data);
-      console.log(`Full response structure:`, JSON.stringify(data, null, 2));
+      console.log(`Profile data received for ${targetUserId}`);
 
       // Extract profile from LiveObjects compact response
       // Expected format: { "profile": { "avatarUrl": "...", "fullName": "...", "isOnline": true, "lastOnlineTime": "..." } }
@@ -144,13 +143,9 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
 
     try {
       console.log(`[ProfileUpdate] Starting profile update for user ${userId}`);
-      console.log(`[ProfileUpdate] Input userData:`, JSON.stringify(userData, null, 2));
 
       const channelName = `profile:${userId}`;
       const url = `https://rest.ably.io/channels/${channelName}/objects`;
-      
-      console.log(`[ProfileUpdate] Channel name: ${channelName}`);
-      console.log(`[ProfileUpdate] Request URL: ${url}`);
 
       // Create or update the profile object using the correct LiveObjects format
       // Only include fields that have actual data (no fallbacks that could overwrite real data)
@@ -187,11 +182,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         });
       }
       
-      console.log(`[ProfileUpdate] Request payload:`, JSON.stringify(profileUpdate, null, 2));
-      console.log(`[ProfileUpdate] Request headers:`, {
-        'Authorization': `Basic ${btoa(ABLY_API_KEY).substring(0, 20)}...`,
-        'Content-Type': 'application/json'
-      });
 
       const response = await fetch(url, {
         method: 'POST',
@@ -202,15 +192,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         body: JSON.stringify(profileUpdate)
       });
 
-      console.log(`[ProfileUpdate] Initial response status: ${response.status} ${response.statusText}`);
-      console.log(`[ProfileUpdate] Initial response headers:`, Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const responseText = await response.text();
         console.error(`[ProfileUpdate] MAP_SET failed with ${response.status}:`, responseText);
         
         // Try creating the root map first
-        console.log(`[ProfileUpdate] Attempting MAP_CREATE fallback...`);
         const createData: any = {
           lastOnlineTime: { "string": new Date().toISOString() },
           isOnline: { "boolean": true }
@@ -231,8 +217,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
           data: createData
         };
 
-        console.log(`[ProfileUpdate] MAP_CREATE payload:`, JSON.stringify(createRoot, null, 2));
-
         const createResponse = await fetch(url, {
           method: 'POST',
           headers: {
@@ -242,20 +226,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
           body: JSON.stringify(createRoot)
         });
 
-        console.log(`[ProfileUpdate] MAP_CREATE response status: ${createResponse.status} ${createResponse.statusText}`);
-        console.log(`[ProfileUpdate] MAP_CREATE response headers:`, Object.fromEntries(createResponse.headers.entries()));
-
         if (!createResponse.ok) {
           const createResponseText = await createResponse.text();
           console.error(`[ProfileUpdate] MAP_CREATE also failed with ${createResponse.status}:`, createResponseText);
           throw new Error(`Failed to create profile: ${createResponse.status} - ${createResponseText}`);
-        } else {
-          const createResponseText = await createResponse.text();
-          console.log(`[ProfileUpdate] MAP_CREATE succeeded:`, createResponseText);
         }
-      } else {
-        const responseText = await response.text();
-        console.log(`[ProfileUpdate] MAP_SET succeeded:`, responseText);
       }
 
       // Update local cache - only update fields that were actually sent
@@ -268,7 +243,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         isOnline: true
       };
 
-      console.log(`[ProfileUpdate] Updating local cache with profile:`, JSON.stringify(updatedProfile, null, 2));
       setProfiles(prev => new Map(prev).set(userId, updatedProfile));
       console.log(`[ProfileUpdate] Successfully updated profile for ${userId}`);
 

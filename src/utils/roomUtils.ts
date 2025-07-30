@@ -12,11 +12,7 @@ import { parseDMRoomId } from './roomId';
 export function formatParticipantNames(participants: string, currentUserId: string, currentUserName?: string, roomId?: string): string {
   if (!participants) return 'Unknown';
   
-  // Debug logging
-  console.log('formatParticipantNames input:', { participants, currentUserId, currentUserName, roomId });
-  
   const participantList = participants.split(',').filter(p => p.trim() !== '');
-  console.log('participantList after split:', participantList);
   
   // Filter out any room IDs that might have been included accidentally
   // Be more specific about what we consider room IDs
@@ -27,12 +23,9 @@ export function formatParticipantNames(participants: string, currentUserId: stri
     const isRoomIdFormat = trimmedParticipant.startsWith('room-') && trimmedParticipant.includes('__');
     
     const shouldSkip = isRoomIdHash || isRoomIdFormat;
-    console.log(`Participant "${trimmedParticipant}": isRoomIdHash=${isRoomIdHash}, isRoomIdFormat=${isRoomIdFormat}, shouldSkip=${shouldSkip}`);
     
     return !shouldSkip;
   });
-  
-  console.log('cleanParticipantList after filtering:', cleanParticipantList);
   
   // Remove current user from the list (match by user ID)
   const otherParticipants = cleanParticipantList.filter(participant => {
@@ -50,36 +43,28 @@ export function formatParticipantNames(participants: string, currentUserId: stri
     }
     
     const isCurrentUser = isCurrentUserById || isCurrentUserByName;
-    console.log(`Checking if "${participant}" is current user: currentUserId="${currentUserId}", isCurrentUserById=${isCurrentUserById}, isCurrentUserByName=${isCurrentUserByName}, isCurrentUser=${isCurrentUser}`);
     
     return !isCurrentUser;
   });
   
-  console.log('otherParticipants after filtering current user:', otherParticipants);
-  
   // If no other participants found and we have a room ID, try to extract from room ID
   if (otherParticipants.length === 0 && roomId) {
-    console.log('No participants found, trying to extract from room ID:', roomId);
     const roomInfo = parseDMRoomId(roomId);
     if (roomInfo) {
       const otherUserId = roomInfo.participants.find((id: string) => id !== currentUserId);
       if (otherUserId) {
-        console.log('Found other user ID from room:', otherUserId);
         return formatSingleName(otherUserId);
       }
     }
   }
   
   if (otherParticipants.length === 0) {
-    console.log('No other participants found, returning "Unknown"');
     return 'Unknown';
   }
   
   // For single participant (DM), show full name
   if (otherParticipants.length === 1) {
-    const formatted = formatSingleName(otherParticipants[0]);
-    console.log('Single participant formatted:', formatted);
-    return formatted;
+    return formatSingleName(otherParticipants[0]);
   }
   
   // For group chat, show first names only
@@ -92,9 +77,7 @@ export function formatParticipantNames(participants: string, currentUserId: stri
     return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
   });
   
-  const result = firstNames.join(', ');
-  console.log('Group chat formatted result:', result);
-  return result;
+  return firstNames.join(', ');
 }
 
 /**

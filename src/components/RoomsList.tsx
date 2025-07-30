@@ -83,9 +83,6 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
 
   // Helper function to extract room data with profile enhancement
   const extractRoomData = async (roomId: string, roomMap: any): Promise<RoomData> => {
-    console.log(`Extracting data for room ${roomId}:`, roomMap);
-    console.log('roomMap type:', typeof roomMap);
-    console.log('roomMap has get method:', typeof roomMap?.get === 'function');
 
     // Handle both LiveMap objects and plain objects
     const getValue = (key: string) => {
@@ -152,18 +149,12 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   const loadAllRooms = useCallback(async (root: any): Promise<Record<string, RoomData>> => {
     const allRooms: Record<string, RoomData> = {};
 
-    console.log('Root object:', root);
-    console.log('Root type:', typeof root);
-    console.log('Root has entries method:', typeof root?.entries === 'function');
-
     try {
       if (root && typeof root.entries === 'function') {
         const roomEntries = Array.from(root.entries());
-        console.log(`Loading ${roomEntries.length} rooms with profile data`);
 
         // Process rooms in parallel for better performance
         const roomPromises = (roomEntries as [string, any][]).map(async ([roomId, roomMap]: [string, any]) => {
-          console.log(`Processing room entry: ${roomId}`, roomMap);
           if (roomMap) {
             const roomData = await extractRoomData(roomId, roomMap);
             return [roomId, roomData];
@@ -206,16 +197,11 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         // Load all rooms using the consolidated function with profile data
         const initialRooms = await loadAllRooms(root);
         console.log('RoomsList: Found rooms:', Object.keys(initialRooms));
-        console.log('RoomsList: Room data:', initialRooms);
         setRooms(initialRooms);
         setIsLoading(false);
 
         // Subscribe to room list changes
         root.subscribe((update: any) => {
-          console.log('=== ROOT SUBSCRIPTION UPDATE ===');
-          console.log('Room list updated:', update);
-          console.log('Update type:', typeof update);
-          console.log('Update keys:', Object.keys(update || {}));
 
           // On any update, reload all rooms from the LiveMap with profile data
           loadAllRooms(root).then(updatedRooms => {
