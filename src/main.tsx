@@ -16,7 +16,6 @@ import { RoomsList } from './components/RoomsList';
 import { OnlinePresence } from './components/OnlinePresence';
 import { AppPresence } from './components/AppPresence';
 import { ProfileProvider } from './contexts/ProfileContext';
-import { useProfileUpdater } from './hooks/useProfileUpdater';
 import { getAblyClients } from './services/ablyClient';
 
 // Vite will replace this at build time
@@ -51,9 +50,6 @@ const AuthenticatedApp: React.FC = () => {
   const fullName = user?.fullName || 'Unknown User';
   const clientId = `${fullName.replace(/\s+/g, '_')}.${userId}`;
 
-  // On home page, activeRoomId should be null
-  const isHomePage = location.pathname === '/';
-  const finalActiveRoomId = isHomePage ? null : activeRoomId;
 
   if (!user) {
     return (
@@ -67,7 +63,7 @@ const AuthenticatedApp: React.FC = () => {
   // useProfileUpdater();
 
   // Get or create Ably clients (reused on rerenders if clientId is the same)
-  const { ablyClient1, ablyClient2, chatClient } = getAblyClients(clientId);
+  const { ablyClient1, chatClient } = getAblyClients(clientId);
 
   console.log('Authenticated User ID:', userId);
   console.log('User Name:', user.fullName);
