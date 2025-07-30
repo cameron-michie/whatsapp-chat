@@ -18,14 +18,25 @@ export const useProfileUpdater = () => {
       // Clear cache on fresh login
       clearCache();
 
-      // Update profile with current user data
-      await updateCurrentUserProfile({
+      // Only update profile with actual user data (no fallbacks that could overwrite real data)
+      const profileUpdate: any = {
         userId: user.id,
-        fullName: user.fullName || '',
-        avatarUrl: user.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
         lastOnlineTime: new Date().toISOString(),
         isOnline: true
-      });
+      };
+
+      // Only include fullName if we have actual data from Clerk
+      if (user.fullName) {
+        profileUpdate.fullName = user.fullName;
+      }
+
+      // Only include avatarUrl if we have actual image data from Clerk
+      if (user.imageUrl) {
+        profileUpdate.avatarUrl = user.imageUrl;
+      }
+
+      console.log('Profile update data (no fallbacks):', profileUpdate);
+      await updateCurrentUserProfile(profileUpdate);
     };
 
     updateProfile();

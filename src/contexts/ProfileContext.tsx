@@ -153,29 +153,39 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
       console.log(`[ProfileUpdate] Request URL: ${url}`);
 
       // Create or update the profile object using the correct LiveObjects format
-      // Batch MAP_SET operations for all profile fields
-      const profileUpdate = [
-        {
+      // Only include fields that have actual data (no fallbacks that could overwrite real data)
+      const profileUpdate = [];
+
+      // Always update timestamp and online status
+      profileUpdate.push({
+        operation: "MAP_SET",
+        path: "profile", 
+        data: { key: "lastOnlineTime", value: { "string": new Date().toISOString() } }
+      });
+
+      profileUpdate.push({
+        operation: "MAP_SET",
+        path: "profile",
+        data: { key: "isOnline", value: { "boolean": true } }
+      });
+
+      // Only update fullName if we have actual data
+      if (userData.fullName) {
+        profileUpdate.push({
           operation: "MAP_SET",
           path: "profile",
-          data: { key: "fullName", value: { "string": userData.fullName || '' } }
-        },
-        {
+          data: { key: "fullName", value: { "string": userData.fullName } }
+        });
+      }
+
+      // Only update avatarUrl if we have actual data
+      if (userData.avatarUrl) {
+        profileUpdate.push({
           operation: "MAP_SET", 
           path: "profile",
-          data: { key: "avatarUrl", value: { "string": userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}` } }
-        },
-        {
-          operation: "MAP_SET",
-          path: "profile", 
-          data: { key: "lastOnlineTime", value: { "string": new Date().toISOString() } }
-        },
-        {
-          operation: "MAP_SET",
-          path: "profile",
-          data: { key: "isOnline", value: { "boolean": true } }
-        }
-      ];
+          data: { key: "avatarUrl", value: { "string": userData.avatarUrl } }
+        });
+      }
       
       console.log(`[ProfileUpdate] Request payload:`, JSON.stringify(profileUpdate, null, 2));
       console.log(`[ProfileUpdate] Request headers:`, {
@@ -201,15 +211,24 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         
         // Try creating the root map first
         console.log(`[ProfileUpdate] Attempting MAP_CREATE fallback...`);
+        const createData: any = {
+          lastOnlineTime: { "string": new Date().toISOString() },
+          isOnline: { "boolean": true }
+        };
+
+        // Only include fields with actual data
+        if (userData.fullName) {
+          createData.fullName = { "string": userData.fullName };
+        }
+
+        if (userData.avatarUrl) {
+          createData.avatarUrl = { "string": userData.avatarUrl };
+        }
+
         const createRoot = {
           operation: "MAP_CREATE",
           path: "profile",
-          data: {
-            fullName: { "string": userData.fullName || '' },
-            avatarUrl: { "string": userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}` },
-            lastOnlineTime: { "string": new Date().toISOString() },
-            isOnline: { "boolean": true }
-          }
+          data: createData
         };
 
         console.log(`[ProfileUpdate] MAP_CREATE payload:`, JSON.stringify(createRoot, null, 2));
@@ -239,11 +258,12 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         console.log(`[ProfileUpdate] MAP_SET succeeded:`, responseText);
       }
 
-      // Update local cache
+      // Update local cache - only update fields that were actually sent
+      const existingProfile = profiles.get(userId);
       const updatedProfile: ProfileData = {
         userId,
-        fullName: userData.fullName || '',
-        avatarUrl: userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+        fullName: userData.fullName || existingProfile?.fullName || userId, // Keep existing or use userId as last resort
+        avatarUrl: userData.avatarUrl || existingProfile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
         lastOnlineTime: new Date().toISOString(),
         isOnline: true
       };

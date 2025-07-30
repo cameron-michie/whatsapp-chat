@@ -108,10 +108,11 @@ function formatSingleName(participant: string): string {
     : participant;
 
   // If it looks like a Clerk user ID (long alphanumeric string), we can't format it nicely
-  // This should ideally be replaced with actual user names from your user database
+  // This indicates we need to fetch the actual profile data
   if (cleanParticipant.length > 20 && /^[a-zA-Z0-9]+$/.test(cleanParticipant)) {
-    // For now, return a generic name - in production you'd want to look up the actual name
-    return 'User';
+    // Return the user ID with user_ prefix so the useEffect above can detect it
+    // This will trigger profile fetching in the component
+    return `user_${cleanParticipant}`;
   }
 
   const parts = cleanParticipant.split('_');
@@ -293,16 +294,40 @@ export const RoomListItem = React.memo(function RoomListItem({
 
   const { getUserName, getUserAvatar, fetchProfile, getProfile } = useProfile();
 
+  // Get profile data directly from useProfile hook
+  const profileName = otherUser ? getUserName(otherUser) : null;
+  const profileAvatarUrl = otherUser ? getUserAvatar(otherUser) : null;
+
   // Fetch profile if not cached and we have an otherUser
   React.useEffect(() => {
     if (otherUser && !getProfile(otherUser)) {
+      console.log(`[RoomListItem] Fetching profile for user: ${otherUser}`);
       fetchProfile(otherUser);
     }
   }, [otherUser, fetchProfile, getProfile]);
 
-  // Get profile data directly from useProfile hook
-  const profileName = otherUser ? getUserName(otherUser) : null;
-  const profileAvatarUrl = otherUser ? getUserAvatar(otherUser) : null;
+  // Additional check: if display name shows as "user_..." format, ensure we fetch the profile
+  React.useEffect(() => {
+    const currentDisplayName = profileName || roomData?.displayName ||
+      (roomData ? formatParticipantNames(roomData.participants, userId || '', userFullName, roomName) : roomName);
+    
+    // Check if the display name is showing as user_... format (indicating we need profile data)
+    if (currentDisplayName.startsWith('user_') || 
+        (currentDisplayName.match(/^User$/i) && otherUser)) {
+      console.log(`[RoomListItem] Display name shows as "${currentDisplayName}", needs profile data`);
+      
+      // Extract user ID from the display name if it starts with user_
+      let targetUserId = otherUser;
+      if (currentDisplayName.startsWith('user_')) {
+        targetUserId = currentDisplayName.substring(5); // Remove "user_" prefix
+      }
+      
+      if (targetUserId && !getProfile(targetUserId)) {
+        console.log(`[RoomListItem] Fetching profile for: ${targetUserId}`);
+        fetchProfile(targetUserId);
+      }
+    }
+  }, [profileName, roomData?.displayName, roomData?.participants, userId, userFullName, roomName, otherUser, fetchProfile, getProfile]);
 
   // Simplified display name logic - use profile first, then fallback
   const displayName = profileName || roomData?.displayName ||
