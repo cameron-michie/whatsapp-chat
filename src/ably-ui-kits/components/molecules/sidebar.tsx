@@ -6,7 +6,6 @@ import { useTheme } from '../../hooks/use-theme.tsx';
 import { Button } from '../atoms/button.tsx';
 import { Icon } from '../atoms/icon.tsx';
 import { CreateRoomModal } from './create-room-modal.tsx';
-import { DropdownMenu } from './dropdown-menu.tsx';
 import { RoomList } from './room-list.tsx';
 
 /**
@@ -142,24 +141,6 @@ export const Sidebar = ({
               <Button variant="ghost" size="sm" onClick={toggleTheme}>
                 <Icon name={theme === 'dark' ? 'sun' : 'moon'} size="md" />
               </Button>
-
-              <DropdownMenu
-                trigger={
-                  <Button variant="ghost" size="sm">
-                    <Icon name="more" size="md" />
-                  </Button>
-                }
-                items={[
-                  {
-                    id: 'create-room',
-                    label: 'Create Room',
-                    icon: '➕',
-                    onClick: () => {
-                      setShowCreateModal(true);
-                    },
-                  },
-                ]}
-              />
 
               {onToggleCollapse && (
                 <Button variant="ghost" size="sm" onClick={onToggleCollapse}>

@@ -5,6 +5,7 @@ import { Button } from '../atoms/button.tsx';
 import { Icon } from '../atoms/icon.tsx';
 import { parseDMRoomId } from '../../../utils/roomId.ts';
 import { useProfile } from '../../../contexts/ProfileContext.tsx';
+import { OtherUserProfileModal } from '../../../components/OtherUserProfileModal.tsx';
 
 /**
  * Room data structure
@@ -275,7 +276,7 @@ export const RoomListItem = React.memo(function RoomListItem({
   roomData,
   isSelected,
   onClick,
-  onLeave,
+  onLeave: _onLeave,
   // avatar: propAvatar,
   isCollapsed = false,
   // typingIndicatorsEnabled = true,
@@ -283,6 +284,7 @@ export const RoomListItem = React.memo(function RoomListItem({
   userFullName,
   participantUserId,
 }: RoomListItemProps) {
+  const [showProfileModal, setShowProfileModal] = React.useState(false);
   // Use participantUserId directly if provided, otherwise parse from roomName
   const otherUser = React.useMemo(() => {
     if (participantUserId) return participantUserId;
@@ -450,19 +452,21 @@ export const RoomListItem = React.memo(function RoomListItem({
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-            {/* Leave button - only visible on hover */}
+            {/* Profile button - only visible on hover */}
             <Button
               variant="ghost"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onLeave();
+                if (otherUser) {
+                  setShowProfileModal(true);
+                }
               }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-1"
-              aria-label={`Leave ${displayName || 'room'}`}
-              title={`Leave ${displayName || 'room'}`}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500 p-1"
+              aria-label={`View profile for ${displayName || 'room'}`}
+              title={`View profile for ${displayName || 'room'}`}
             >
-              <Icon name="close" size="sm" />
+              <Icon name="info" size="sm" />
             </Button>
           </div>
         </div>
@@ -477,6 +481,16 @@ export const RoomListItem = React.memo(function RoomListItem({
           {/* {typingIndicatorsEnabled && <TypingIndicators maxClients={1} />} */}
         </div>
       </div>
+
+      {/* Profile Modal */}
+      {otherUser && (
+        <OtherUserProfileModal
+          userId={otherUser}
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          roomId={roomName}
+        />
+      )}
     </div>
   );
 });
