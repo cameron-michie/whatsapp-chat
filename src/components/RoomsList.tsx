@@ -201,7 +201,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         setIsLoading(false);
 
         // Subscribe to room list changes
-        root.subscribe((update: any) => {
+        root.subscribe(() => {
 
           // On any update, reload all rooms from the LiveMap with profile data
           loadAllRooms(root).then(updatedRooms => {

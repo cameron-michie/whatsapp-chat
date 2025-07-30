@@ -10,7 +10,7 @@ import { parseDMRoomId } from '../utils/roomId';
 // Inner component that uses the chat hooks
 const ChatWindowContent: React.FC<{ roomId: string }> = ({ roomId }) => {
   // const room = useRoom(); // Room info available but not currently used
-  const { messages } = useMessages();
+  useMessages(); // Initialize messages hook but don't use the return value
   const { user } = useUser();
   const { getUserName } = useProfile();
 
