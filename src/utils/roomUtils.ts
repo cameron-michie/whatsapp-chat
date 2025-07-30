@@ -4,26 +4,6 @@
 
 import { parseDMRoomId } from './roomId';
 
-/**
- * Create a short hash from sorted user IDs for room identification
- */
-export function createRoomId(userIds: string[]): string {
-  // Sort user IDs to ensure consistent room IDs regardless of order
-  const sortedIds = [...userIds].sort();
-  const combined = sortedIds.join('|');
-  
-  // Simple hash function to create shorter IDs
-  let hash = 0;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  
-  // Convert to positive number and encode as base36 for shorter representation
-  const roomId = Math.abs(hash).toString(36);
-  return `room-${roomId}`;
-}
 
 /**
  * Format participant names for display (exclude current user, format names)
