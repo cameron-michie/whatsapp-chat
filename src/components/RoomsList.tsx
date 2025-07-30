@@ -6,6 +6,7 @@ import { useProfile } from '../contexts/ProfileContext';
 // import { useRoomParticipants } from '../hooks/useRoomParticipants';
 import { parseDMRoomId } from '../utils/roomId';
 import { UserProfileHeader } from './UserProfileHeader';
+import { useProfileUpdater } from '../hooks/useProfileUpdater';
 
 interface RoomData {
   chatRoomType: 'DM' | 'topic' | 'groupDM';
@@ -33,6 +34,8 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   onRoomSelect,
   activeRoomId,
 }) => {
+  useProfileUpdater();
+
   const [rooms, setRooms] = useState<Record<string, RoomData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const { channel } = useChannel(`roomslist:${userId}`);
@@ -40,7 +43,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   const { getUserName } = useProfile();
   // const { getRoomDisplayInfo } = useRoomParticipants();
   const { presenceData } = usePresenceListener('presence');
-  
+
   // Track online users from presence
   const onlineUserIds = useMemo(() => {
     if (!presenceData) return new Set();
@@ -157,7 +160,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
       if (root && typeof root.entries === 'function') {
         const roomEntries = Array.from(root.entries());
         console.log(`Loading ${roomEntries.length} rooms with profile data`);
-        
+
         // Process rooms in parallel for better performance
         const roomPromises = (roomEntries as [string, any][]).map(async ([roomId, roomMap]: [string, any]) => {
           console.log(`Processing room entry: ${roomId}`, roomMap);
@@ -167,9 +170,9 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
           }
           return null;
         });
-        
+
         const results = await Promise.all(roomPromises);
-        
+
         results.forEach((result) => {
           if (result) {
             const [roomId, roomData] = result as [string, RoomData];
@@ -306,14 +309,14 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
       lastResetTime = now;
 
       console.log(`⚡ ${reason} - resetting counter for active room: ${activeRoomId}`);
-      
+
       try {
         const root = await channel.objects.getRoot();
         const roomMap = root.get(activeRoomId);
 
         if (roomMap) {
           const unreadCounter = (roomMap as any).get('unreadMessageCount');
-          
+
           if (unreadCounter !== undefined) {
             console.log(`⚡ Resetting counter due to ${reason.toLowerCase()} for room: ${activeRoomId}`);
             await removeActiveRoomCounter(roomMap, activeRoomId);
@@ -334,7 +337,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         resetActiveRoomCounter('Page became visible');
       }
     };
-    
+
     // Throttled activity handler
     let activityTimeout: NodeJS.Timeout;
     const handleUserActivity = () => {
@@ -348,7 +351,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     // Add event listeners for focus scenarios (not activity to avoid spam)
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     // Only listen for clicks and key events in the chat area, not mouse movement
     document.addEventListener('click', handleUserActivity);
     document.addEventListener('keydown', handleUserActivity);
@@ -377,18 +380,18 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
       try {
         console.log('🟢 Presence data changed, reloading rooms with online status');
         console.log('🟢 Online user IDs:', Array.from(onlineUserIds));
-        
+
         const root = await channel.objects.getRoot();
         const updatedRooms = await loadAllRooms(root);
         console.log('🟢 Reloaded rooms with presence data:', Object.keys(updatedRooms));
-        
+
         // Log each room's online status for debugging
         Object.entries(updatedRooms).forEach(([roomId, roomData]) => {
           if (roomData.isOnline) {
             console.log(`🟢 Room ${roomId} has online user`);
           }
         });
-        
+
         setRooms(updatedRooms);
       } catch (error) {
         console.error('Error reloading rooms with presence:', error);
@@ -419,13 +422,13 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   // Simplified: Just format message previews, avatars handled directly in components
   const transformedRooms = useMemo(() => {
     const transformed: Record<string, any> = {};
-    
+
     Object.entries(rooms).forEach(([roomId, roomData]) => {
       // Parse sender name using profile data
       let senderDisplayName = 'Someone';
       if (roomData.latestMessageSender) {
-        if (roomData.latestMessageSender === userId || 
-            roomData.latestMessageSender === user?.fullName?.replace(/\s+/g, '_')) {
+        if (roomData.latestMessageSender === userId ||
+          roomData.latestMessageSender === user?.fullName?.replace(/\s+/g, '_')) {
           senderDisplayName = 'You';
         } else {
           // Extract clean user ID from client ID format
@@ -439,7 +442,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
 
           const cleanSenderId = extractUserIdFromClientId(roomData.latestMessageSender);
           const profileName = getUserName(cleanSenderId);
-          
+
           // If we got a meaningful profile name (not just the user ID), use it
           if (profileName && profileName !== cleanSenderId) {
             senderDisplayName = profileName;
@@ -460,12 +463,12 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
           }
         }
       }
-      
+
       // Format message preview
-      const messagePreview = roomData.latestMessagePreview ? 
-        `${senderDisplayName}: ${roomData.latestMessagePreview}` : 
+      const messagePreview = roomData.latestMessagePreview ?
+        `${senderDisplayName}: ${roomData.latestMessagePreview}` :
         'No messages yet';
-      
+
       transformed[roomId] = {
         ...roomData,
         // Format message preview with proper sender names
@@ -473,7 +476,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
         latestMessagePreview: messagePreview
       };
     });
-    
+
     return transformed;
   }, [rooms, userId, user?.fullName, getUserName]);
 
@@ -517,7 +520,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     <div className="h-full flex flex-col">
       {/* User Profile Header */}
       <UserProfileHeader userId={userId} />
-      
+
       {/* Existing rooms sidebar */}
       <div className="flex-1 overflow-hidden">
         <Sidebar {...sidebarProps} />

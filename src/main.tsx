@@ -1,8 +1,5 @@
-import { ChatClient } from '@ably/chat';
 import { ChatClientProvider } from '@ably/chat/react';
-import * as Ably from 'ably';
 import { AblyProvider, ChannelProvider } from 'ably/react';
-import Objects from 'ably/objects';
 import React, { useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -20,6 +17,7 @@ import { OnlinePresence } from './components/OnlinePresence';
 import { AppPresence } from './components/AppPresence';
 import { ProfileProvider } from './contexts/ProfileContext';
 import { useProfileUpdater } from './hooks/useProfileUpdater';
+import { getAblyClients } from './services/ablyClient';
 
 // Vite will replace this at build time
 const ABLY_API_KEY = import.meta.env.VITE_ABLY_API_KEY as string;
@@ -65,115 +63,60 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  return (
-    <ProfileProvider userId={userId}>
-      <AuthenticatedAppContent
-        user={user}
-        userId={userId}
-        clientId={clientId}
-        activeRoomId={finalActiveRoomId}
-        handleRoomSelect={handleRoomSelect}
-        isHomePage={isHomePage}
-      />
-    </ProfileProvider>
-  );
-};
-
-// Main app content component
-interface AuthenticatedAppContentProps {
-  user: any;
-  userId: string;
-  clientId: string;
-  activeRoomId: string | null;
-  handleRoomSelect: (roomId: string) => void;
-  isHomePage: boolean;
-}
-
-const AuthenticatedAppContent: React.FC<AuthenticatedAppContentProps> = ({
-  user,
-  userId,
-  clientId,
-  activeRoomId,
-  handleRoomSelect,
-  // isHomePage,
-}) => {
   // Update user profile on login
-  useProfileUpdater();
+  // useProfileUpdater();
 
-  // Create Ably Realtime client with LiveObjects plugin
-  const ablyClient1 = new Ably.Realtime({
-    key: ABLY_API_KEY,
-    plugins: { Objects },
-    clientId: clientId
-  });
-
-  // Create Ably Realtime client for Chat Window with authenticated clientId
-  const ablyClient2 = new Ably.Realtime({
-    key: ABLY_API_KEY,
-    clientId: clientId,
-  });
-
-  // Create Chat client using the Ably client
-  const chatClient = new ChatClient(ablyClient2);
+  // Get or create Ably clients (reused on rerenders if clientId is the same)
+  const { ablyClient1, ablyClient2, chatClient } = getAblyClients(clientId);
 
   console.log('Authenticated User ID:', userId);
   console.log('User Name:', user.fullName);
   console.log('Chat client created for user:', chatClient);
-
   return (
-    <ThemeProvider options={{ persist: true, defaultTheme: 'light' }}>
-      <AvatarProvider>
-        <ChatSettingsProvider>
-          <AblyProvider client={ablyClient1}>
-            <ChannelProvider channelName="presence">
-              <AppPresence>
-                <ChatClientProvider client={chatClient}>
-                  <div className="flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden h-screen w-full">
-                    {/* User Profile Section
-                <div className="absolute top-4 right-4 z-20 flex items-center space-x-3 bg-white shadow-lg rounded-lg px-3 py-2">
-                  <img
-                    src={user.imageUrl}
-                    alt={user.fullName || 'User'}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    {user.fullName || user.emailAddresses[0]?.emailAddress}
-                  </span>
-                </div>
- */}
+    <ProfileProvider userId={userId}>
+      <ThemeProvider options={{ persist: true, defaultTheme: 'light' }}>
+        <AvatarProvider>
+          <ChatSettingsProvider>
+            <AblyProvider client={ablyClient1}>
+              <ChannelProvider channelName="presence">
+                <AppPresence>
+                  <ChatClientProvider client={chatClient}>
+                    <div className="flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-hidden h-screen w-full">
 
-                    {/* Sidebar - Rooms List */}
-                    <div className="flex-shrink-0 w-1/4 min-w-80 max-w-96">
-                      <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
-                        <RoomsList
-                          userId={userId}
-                          onRoomSelect={handleRoomSelect}
-                          activeRoomId={activeRoomId || undefined}
-                        />
-                      </ChannelProvider>
+                      {/* Sidebar - Rooms List */}
+                      <div className="flex-shrink-0 w-1/4 min-w-80 max-w-96">
+                        <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
+                          <RoomsList
+                            userId={userId}
+                            onRoomSelect={handleRoomSelect}
+                            activeRoomId={activeRoomId || undefined}
+                          />
+                        </ChannelProvider>
+                      </div>
+
+                      {/* Main Content - Chat Window */}
+                      <main className="flex-1 overflow-hidden">
+                        <Routes>
+                          <Route path="/room/:roomId" element={<ChatWindow />} />
+                          <Route path="/" element={
+                            <div className="flex flex-col h-full">
+                              <OnlinePresence onClose={() => { }} inlineMode={true} />
+                            </div>
+                          } />
+                        </Routes>
+                      </main>
                     </div>
-
-                    {/* Main Content - Chat Window */}
-                    <main className="flex-1 overflow-hidden">
-                      <Routes>
-                        <Route path="/room/:roomId" element={<ChatWindow />} />
-                        <Route path="/" element={
-                          <div className="flex flex-col h-full">
-                            <OnlinePresence onClose={() => { }} inlineMode={true} />
-                          </div>
-                        } />
-                      </Routes>
-                    </main>
-                  </div>
-                </ChatClientProvider>
-              </AppPresence>
-            </ChannelProvider>
-          </AblyProvider>
-        </ChatSettingsProvider>
-      </AvatarProvider>
-    </ThemeProvider >
+                  </ChatClientProvider>
+                </AppPresence>
+              </ChannelProvider>
+            </AblyProvider>
+          </ChatSettingsProvider>
+        </AvatarProvider>
+      </ThemeProvider >
+    </ProfileProvider>
   );
 };
+
 
 // Main App component with Clerk authentication
 const App: React.FC = () => {

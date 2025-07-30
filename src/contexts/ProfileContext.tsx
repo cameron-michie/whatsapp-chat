@@ -143,22 +143,46 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
     }
 
     try {
-      console.log(`Updating profile for current user ${userId}:`, userData);
+      console.log(`[ProfileUpdate] Starting profile update for user ${userId}`);
+      console.log(`[ProfileUpdate] Input userData:`, JSON.stringify(userData, null, 2));
 
       const channelName = `profile:${userId}`;
       const url = `https://rest.ably.io/channels/${channelName}/objects`;
+      
+      console.log(`[ProfileUpdate] Channel name: ${channelName}`);
+      console.log(`[ProfileUpdate] Request URL: ${url}`);
 
       // Create or update the profile object using the correct LiveObjects format
-      const profileUpdate = {
-        operation: "MAP_SET",
-        path: "profile",
-        data: {
-          fullName: userData.fullName || '',
-          avatarUrl: userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
-          lastOnlineTime: new Date().toISOString(),
-          isOnline: true
+      // Batch MAP_SET operations for all profile fields
+      const profileUpdate = [
+        {
+          operation: "MAP_SET",
+          path: "profile",
+          data: { key: "fullName", value: { "string": userData.fullName || '' } }
+        },
+        {
+          operation: "MAP_SET", 
+          path: "profile",
+          data: { key: "avatarUrl", value: { "string": userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}` } }
+        },
+        {
+          operation: "MAP_SET",
+          path: "profile", 
+          data: { key: "lastOnlineTime", value: { "string": new Date().toISOString() } }
+        },
+        {
+          operation: "MAP_SET",
+          path: "profile",
+          data: { key: "isOnline", value: { "boolean": true } }
         }
-      };
+      ];
+      
+      console.log(`[ProfileUpdate] Request payload:`, JSON.stringify(profileUpdate, null, 2));
+      console.log(`[ProfileUpdate] Request headers:`, {
+        'Authorization': `Basic ${btoa(ABLY_API_KEY).substring(0, 20)}...`,
+        'Content-Type': 'application/json'
+      });
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -168,19 +192,27 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         body: JSON.stringify(profileUpdate)
       });
 
+      console.log(`[ProfileUpdate] Initial response status: ${response.status} ${response.statusText}`);
+      console.log(`[ProfileUpdate] Initial response headers:`, Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        console.log(response);
+        const responseText = await response.text();
+        console.error(`[ProfileUpdate] MAP_SET failed with ${response.status}:`, responseText);
+        
         // Try creating the root map first
+        console.log(`[ProfileUpdate] Attempting MAP_CREATE fallback...`);
         const createRoot = {
           operation: "MAP_CREATE",
           path: "profile",
           data: {
-            fullName: userData.fullName || '',
-            avatarUrl: userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
-            lastOnlineTime: new Date().toISOString(),
-            isOnline: true
+            fullName: { "string": userData.fullName || '' },
+            avatarUrl: { "string": userData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}` },
+            lastOnlineTime: { "string": new Date().toISOString() },
+            isOnline: { "boolean": true }
           }
         };
+
+        console.log(`[ProfileUpdate] MAP_CREATE payload:`, JSON.stringify(createRoot, null, 2));
 
         const createResponse = await fetch(url, {
           method: 'POST',
@@ -191,9 +223,20 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
           body: JSON.stringify(createRoot)
         });
 
+        console.log(`[ProfileUpdate] MAP_CREATE response status: ${createResponse.status} ${createResponse.statusText}`);
+        console.log(`[ProfileUpdate] MAP_CREATE response headers:`, Object.fromEntries(createResponse.headers.entries()));
+
         if (!createResponse.ok) {
-          throw new Error(`Failed to create profile: ${createResponse.status}`);
+          const createResponseText = await createResponse.text();
+          console.error(`[ProfileUpdate] MAP_CREATE also failed with ${createResponse.status}:`, createResponseText);
+          throw new Error(`Failed to create profile: ${createResponse.status} - ${createResponseText}`);
+        } else {
+          const createResponseText = await createResponse.text();
+          console.log(`[ProfileUpdate] MAP_CREATE succeeded:`, createResponseText);
         }
+      } else {
+        const responseText = await response.text();
+        console.log(`[ProfileUpdate] MAP_SET succeeded:`, responseText);
       }
 
       // Update local cache
@@ -205,11 +248,17 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children, user
         isOnline: true
       };
 
+      console.log(`[ProfileUpdate] Updating local cache with profile:`, JSON.stringify(updatedProfile, null, 2));
       setProfiles(prev => new Map(prev).set(userId, updatedProfile));
-      console.log(`Successfully updated profile for ${userId}`);
+      console.log(`[ProfileUpdate] Successfully updated profile for ${userId}`);
 
     } catch (error) {
-      console.error(`Error updating profile for ${userId}:`, error);
+      console.error(`[ProfileUpdate] Error updating profile for ${userId}:`, error);
+      if (error instanceof Error) {
+        console.error(`[ProfileUpdate] Error message:`, error.message);
+        console.error(`[ProfileUpdate] Error stack:`, error.stack);
+      }
+      throw error;
     }
   }, [userId, ABLY_API_KEY]);
 
