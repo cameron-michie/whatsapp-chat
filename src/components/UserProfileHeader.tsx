@@ -72,11 +72,10 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
                 latestMessagePreview: user?.primaryEmailAddress?.emailAddress || 'No email',
                 latestMessageSender: '',
                 latestMessageTimestamp: '',
-                displayMacroUrl: user?.imageUrl || currentProfile?.avatarUrl || '',
+                avatarUrl: user?.imageUrl || currentProfile?.avatarUrl || '',
                 participants: user?.fullName || currentProfile?.fullName || 'Unknown User',
                 unreadMessageCount: 0,
                 displayName: user?.fullName || currentProfile?.fullName || 'Unknown User',
-                avatarUrl: user?.imageUrl || currentProfile?.avatarUrl,
                 isOnline: currentProfile?.isOnline || false
               }}
               isSelected={false}
@@ -173,11 +172,10 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ userId }) 
               latestMessagePreview: 'View profile',
               latestMessageSender: '',
               latestMessageTimestamp: '',
-              displayMacroUrl: user?.imageUrl || currentProfile?.avatarUrl || '',
+              avatarUrl: user?.imageUrl || currentProfile?.avatarUrl || '',
               participants: user?.fullName || currentProfile?.fullName || 'Unknown User',
               unreadMessageCount: 0,
               displayName: user?.fullName || currentProfile?.fullName || 'Unknown User',
-              avatarUrl: user?.imageUrl || currentProfile?.avatarUrl,
               isOnline: currentProfile?.isOnline || false
             }}
             isSelected={false}

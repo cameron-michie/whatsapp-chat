@@ -16,12 +16,11 @@ export interface RoomData {
   latestMessagePreview: string;
   latestMessageSender: string;
   latestMessageTimestamp: string;
-  displayMacroUrl: string;
+  avatarUrl: string;
   participants: string;
   unreadMessageCount: number;
   // Profile-based enhancements
   displayName?: string;
-  avatarUrl?: string;
   isOnline?: boolean;
 }
 
@@ -345,7 +344,7 @@ export const RoomListItem = React.memo(function RoomListItem({
   // Create avatar data with profile priority: propAvatar > profile > roomData > fallback
   const roomAvatarData = {
     displayName: displayName,
-    src: profileAvatarUrl || roomData?.avatarUrl || roomData?.displayMacroUrl || undefined,
+    src: profileAvatarUrl || roomData?.avatarUrl || undefined,
     initials: displayName.split(' ').map(word => word.charAt(0)).join('').substring(0, 2).toUpperCase(),
     color: `bg-${['blue', 'green', 'purple', 'pink', 'indigo'][Math.abs(roomName.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % 5]}-500`
   };

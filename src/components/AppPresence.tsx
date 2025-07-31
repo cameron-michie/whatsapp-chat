@@ -13,16 +13,9 @@ export const AppPresence: React.FC<{ children: React.ReactNode }> = ({ children 
   // Enter presence when component mounts and user is available
   useEffect(() => {
     if (user) {
-      const userData = {
-        userId: user.id,
-        fullName: user.fullName || 'Unknown User',
-        avatarUrl: user.imageUrl,
-        timestamp: Date.now()
-      };
-
-      console.log('App-level entering presence with data:', userData);
+      console.log('App-level entering presence');
       
-      updateStatus(userData).then(() => {
+      updateStatus('online').then(() => {
         console.log('Successfully entered app-level presence');
       }).catch((error) => {
         console.error('Failed to enter app-level presence:', error);

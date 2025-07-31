@@ -96,11 +96,10 @@ export const OtherUserProfileModal: React.FC<OtherUserProfileModalProps> = ({
               latestMessagePreview: 'View profile',
               latestMessageSender: '',
               latestMessageTimestamp: '',
-              displayMacroUrl: profileAvatarUrl || '',
+              avatarUrl: profileAvatarUrl || '',
               participants: profileName,
               unreadMessageCount: 0,
               displayName: profileName,
-              avatarUrl: profileAvatarUrl,
               isOnline: otherUserProfile?.isOnline || false
             }}
             isSelected={false}

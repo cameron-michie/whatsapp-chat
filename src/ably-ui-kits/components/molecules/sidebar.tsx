@@ -17,12 +17,11 @@ export interface RoomData {
   latestMessagePreview: string;
   latestMessageSender: string;
   latestMessageTimestamp: string;
-  displayMacroUrl: string;
+  avatarUrl: string;
   participants: string;
   unreadMessageCount: number;
   // Profile-based enhancements
   displayName?: string;
-  avatarUrl?: string;
   isOnline?: boolean;
 }
 

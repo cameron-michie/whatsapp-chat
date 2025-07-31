@@ -14,12 +14,11 @@ interface RoomData {
   latestMessagePreview: string;
   latestMessageSender: string;
   latestMessageTimestamp: string;
-  displayMacroUrl: string;
+  avatarUrl: string;
   participants: string;
   unreadMessageCount: number;
   // Enhanced with profile data
   displayName?: string;
-  avatarUrl?: string;
   isOnline?: boolean;
 }
 
@@ -116,7 +115,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
       latestMessagePreview: getValue('latestMessagePreview') || '',
       latestMessageSender: getValue('latestMessageSender') || '',
       latestMessageTimestamp: getValue('latestMessageTimestamp') || '',
-      displayMacroUrl: getValue('displayMacroUrl') || '',
+      avatarUrl: getValue('avatarUrl') || '',
       participants: getValue('participants') || '',
       unreadMessageCount: getUnreadCountValue()
     };

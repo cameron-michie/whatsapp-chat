@@ -50,7 +50,6 @@ const AuthenticatedApp: React.FC = () => {
   const fullName = user?.fullName || 'Unknown User';
   const clientId = `${fullName.replace(/\s+/g, '_')}.${userId}`;
 
-
   if (!user) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -59,13 +58,11 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  // Update user profile on login
-  // useProfileUpdater();
-
   // Get or create Ably clients (reused on rerenders if clientId is the same)
   const { ablyClient1, chatClient } = getAblyClients(clientId);
 
   console.log('Authenticated User ID:', userId);
+  console.log('User object: ', user);
   console.log('User Name:', user.fullName);
   console.log('Chat client created for user:', chatClient);
   return (
@@ -95,9 +92,11 @@ const AuthenticatedApp: React.FC = () => {
                         <Routes>
                           <Route path="/room/:roomId" element={<ChatWindow />} />
                           <Route path="/" element={
-                            <div className="flex flex-col h-full">
-                              <OnlinePresence onClose={() => { }} inlineMode={true} />
-                            </div>
+                            <ChannelProvider channelName={`roomslist:${userId}`} options={{ modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] }}>
+                              <div className="flex flex-col h-full">
+                                <OnlinePresence onClose={() => { }} inlineMode={true} />
+                              </div>
+                            </ChannelProvider>
                           } />
                         </Routes>
                       </main>

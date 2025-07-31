@@ -80,10 +80,13 @@ export const ChatWindow: React.FC = () => {
     );
   }
 
+  // Use room ID directly as channel name
+  const channelName = roomId;
+
   return (
     <ChatRoomProvider
       key={roomId}
-      name={roomId}
+      name={channelName}
       options={{
         occupancy: { enableEvents: true },
       }}

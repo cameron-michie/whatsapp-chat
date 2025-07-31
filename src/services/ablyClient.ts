@@ -86,7 +86,7 @@ class AblyClientManager {
   public disposeClients(): void {
     if (this.clients) {
       console.log('[AblyClientSingleton] Disposing Ably clients');
-      
+
       try {
         this.clients.ablyClient1.close();
         this.clients.ablyClient2.close();

@@ -1,6 +1,6 @@
 /**
  * Utilities for creating and parsing room IDs
- * Convention: room-{userId1}-{userId2}-dm (alphabetically sorted)
+ * Convention: {userId1}:{userId2} (alphabetically sorted)
  */
 
 export interface DMRoomInfo {
@@ -13,7 +13,7 @@ export interface DMRoomInfo {
  * Always sorts alphabetically to ensure consistency
  * @param userId1 - First user ID
  * @param userId2 - Second user ID  
- * @returns Room ID in format "room-{sortedUserId1}__{sortedUserId2}-dm"
+ * @returns Room ID in format "{sortedUserId1}:{sortedUserId2}"
  */
 export function createDMRoomId(userId1: string, userId2: string): string {
   if (!userId1 || !userId2) {
@@ -25,8 +25,7 @@ export function createDMRoomId(userId1: string, userId2: string): string {
   }
   
   const sortedIds = [userId1, userId2].sort();
-  // Use double underscore as separator to avoid conflicts with user IDs containing single dashes
-  return `room-${sortedIds[0]}__${sortedIds[1]}-dm`;
+  return `${sortedIds[0]}:${sortedIds[1]}`;
 }
 
 /**
@@ -35,16 +34,13 @@ export function createDMRoomId(userId1: string, userId2: string): string {
  * @returns Parsed room info or null if invalid format
  */
 export function parseDMRoomId(roomId: string): DMRoomInfo | null {
-  // Parse room ID with double underscore separator: room-userId1__userId2-dm
-  if (!roomId || typeof roomId !== 'string' || !roomId.startsWith('room-') || !roomId.endsWith('-dm')) {
+  // Parse room ID with colon separator: userId1:userId2
+  if (!roomId || typeof roomId !== 'string' || !roomId.includes(':')) {
     return null;
   }
   
-  // Remove 'room-' prefix and '-dm' suffix
-  const middlePart = roomId.slice(5, -3); // 'room-'.length = 5, '-dm'.length = 3
-  
-  // Split by double underscore separator
-  const parts = middlePart.split('__');
+  // Split by colon separator
+  const parts = roomId.split(':');
   if (parts.length !== 2) {
     return null;
   }

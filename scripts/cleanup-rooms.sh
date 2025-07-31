@@ -10,6 +10,7 @@ USER_IDS=(
     "user_2hUyGM9IiZehPwBlrSOigZ6EHu0"
     "user_2hUyd4JpNzwphftRvtwlnb8W7S8"
     "user_30HNK6nodPBeewpeNXEXs4D0wwR"
+    "user_30TQTqC9kyElRLc1EQ4Zz3jwbyc"
 )
 
 if [ -z "$ABLY_API_KEY" ]; then

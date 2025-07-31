@@ -378,7 +378,7 @@ async function createNewRoom(url, roomId, messagePreview, senderId, timestamp, r
         latestMessagePreview: { string: messagePreview },
         latestMessageSender: { string: senderId },
         latestMessageTimestamp: { string: timestamp },
-        displayMacroUrl: { string: `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderId}` },
+        avatarUrl: { string: `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderId}` },
         participants: { string: recipients.join(',') }
       }
     },
