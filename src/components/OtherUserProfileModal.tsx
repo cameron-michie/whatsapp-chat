@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useProfile } from '../contexts/ProfileContext';
 import { RoomListItem } from '../ably-ui-kits/components/molecules/room-list-item';
-import { useChannel } from 'ably/react';
+import { useChannel, usePresenceListener } from 'ably/react';
 import { useUser } from '@clerk/clerk-react';
 
 interface OtherUserProfileModalProps {
@@ -21,6 +21,22 @@ export const OtherUserProfileModal: React.FC<OtherUserProfileModalProps> = ({
   const { getProfile, fetchProfile, getUserName, getUserAvatar } = useProfile();
   const [otherUserProfile, setOtherUserProfile] = useState<any>(null);
   const { channel } = useChannel(`roomslist:${currentUser?.id}`);
+  const { presenceData } = usePresenceListener('presence');
+
+  // Check if the user is currently online via presence
+  const isUserOnline = useMemo(() => {
+    if (!presenceData || !userId) return false;
+    
+    return presenceData.some(member => {
+      if (!member.clientId || !member.clientId.includes('.') || member.action !== 'present') {
+        return false;
+      }
+      
+      const parts = member.clientId.split('.');
+      const memberUserId = parts[parts.length - 1];
+      return memberUserId === userId;
+    });
+  }, [presenceData, userId]);
 
   // Fetch other user's profile
   useEffect(() => {
@@ -100,7 +116,7 @@ export const OtherUserProfileModal: React.FC<OtherUserProfileModalProps> = ({
               participants: profileName,
               unreadMessageCount: 0,
               displayName: profileName,
-              isOnline: otherUserProfile?.isOnline || false
+              isOnline: isUserOnline
             }}
             isSelected={false}
             onClick={() => {}} // No click action for profile display
@@ -127,9 +143,9 @@ export const OtherUserProfileModal: React.FC<OtherUserProfileModalProps> = ({
                     Profile Status
                   </label>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${otherUserProfile.isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${isUserOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     <span className="text-sm text-gray-900 dark:text-gray-100">
-                      {otherUserProfile.isOnline ? 'Online' : 'Offline'}
+                      {isUserOnline ? 'Online' : 'Offline'}
                     </span>
                   </div>
                 </div>
