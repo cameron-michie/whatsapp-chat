@@ -7,10 +7,8 @@ export const handler = async (event) => {
     // Parse the incoming webhook payload
     let payload;
     if (event.body) {
-      // API Gateway event (production)
       payload = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
     } else {
-      // Direct Lambda invocation or test event
       payload = event;
     }
 
@@ -18,7 +16,6 @@ export const handler = async (event) => {
 
     // Extract webhook details
     const { source, appId, channel, messages } = payload;
-
     console.log(`Processing webhook: source=${source}, appId=${appId}, channel=${channel}`);
     console.log(`Messages array length: ${messages?.length || 0}`);
 
@@ -30,14 +27,10 @@ export const handler = async (event) => {
       };
     }
 
-    // Process each message
     for (const [index, rawMessage] of messages.entries()) {
       console.log(`Processing message ${index + 1}:`, JSON.stringify(rawMessage, null, 2));
 
-      // Extract message details
       const { data, name, timestamp, clientId, summary, action } = rawMessage;
-
-      // Parse the JSON data string
       let parsedData = {};
       let messageText = '';
 
@@ -55,7 +48,6 @@ export const handler = async (event) => {
         continue;
       }
 
-      // Check for reactions in summary and determine if this is a reaction event
       let hasReactions = false;
       let isReactionEvent = false;
       let reactionPreview = '';
@@ -63,25 +55,16 @@ export const handler = async (event) => {
       if (summary && summary['reaction:distinct.v1']) {
         hasReactions = true;
         const reactions = summary['reaction:distinct.v1'];
-
-        // Detect reaction events: action 4 (update) with reactions but same message content
-        // This indicates someone added a reaction to an existing message
         if (action === 4 && hasReactions) {
           isReactionEvent = true;
-          // Create reaction preview format: "Name reacted 🙌 to `original message`"
           const senderName = clientId.includes('.') ? clientId.split('.')[0].replace('_', ' ') : clientId;
           const reactionEmojis = Object.keys(reactions);
-          const latestEmoji = reactionEmojis[reactionEmojis.length - 1]; // Get the most recent reaction
-
-          // Create the reaction message preview
+          const latestEmoji = reactionEmojis[reactionEmojis.length - 1];
           const truncatedMessage = messageText.length > 30 ? messageText.substring(0, 27) + '...' : messageText;
           reactionPreview = ` reacted ${latestEmoji} to "${truncatedMessage}"`;
           console.log(`Detected reaction event: ${reactionPreview}`);
         } else {
-          // Regular message with reactions - format as before
-          const reactionEntries = Object.entries(reactions).map(([emoji, data]) => {
-            return `${emoji}(${data.total})`;
-          });
+          const reactionEntries = Object.entries(reactions).map(([emoji, data]) => `${emoji}(${data.total})`);
           reactionPreview = reactionEntries.join(' ');
           console.log(`Message has reactions: ${reactionPreview}`);
         }
@@ -92,13 +75,10 @@ export const handler = async (event) => {
       console.log(`Sender (clientId): ${clientId}`);
       console.log(`Channel: ${channel}`);
 
-      // Extract room ID from channel name (remove ::$chat suffix)
       const roomId = channel.replace(/::?\$chat$/, '');
       console.log(`Extracted room ID: ${roomId}`);
 
-      // Extract recipients from parsed metadata
       let recipients = [];
-
       if (parsedData.metadata && parsedData.metadata.recipients) {
         const recipientsStr = parsedData.metadata.recipients;
         if (recipientsStr && recipientsStr.trim() !== '') {
@@ -118,8 +98,16 @@ export const handler = async (event) => {
       console.log('Recipients:', recipients);
 
       if (recipients.length > 0) {
-        // Update LiveObjects for each recipient
-        await updateLiveObjectsForRecipients(recipients, roomId, messageText, clientId, timestamp, hasReactions, reactionPreview, isReactionEvent);
+        await updateLiveObjectsForRecipients(
+          recipients,
+          roomId,
+          messageText,
+          clientId,
+          timestamp,
+          hasReactions,
+          reactionPreview,
+          isReactionEvent
+        );
       } else {
         console.log('No recipients found - skipping LiveObjects update');
       }
@@ -144,8 +132,8 @@ export const handler = async (event) => {
 
 // Helper function to make Ably REST API requests
 async function makeAblyRequest(url, operations, apiKey) {
-  const isArray = Array.isArray(operations);
-
+  console.log(`➡️ [makeAblyRequest] URL: ${url}`);
+  console.log(`➡️ [makeAblyRequest] Operations: ${JSON.stringify(operations, null, 2)}`);
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -155,44 +143,54 @@ async function makeAblyRequest(url, operations, apiKey) {
     body: JSON.stringify(operations)
   });
 
+  console.log(`⬅️ [makeAblyRequest] Status: ${response.status}`);
+  const resJson = await response.json().catch(() => ({}));
+  console.log(`⬅️ [makeAblyRequest] Response: ${JSON.stringify(resJson, null, 2)}`);
+
   if (!response.ok) {
-    const errorResponse = await response.json();
-    throw new Error(`Ably API error: ${response.status} - ${JSON.stringify(errorResponse)}`);
+    throw new Error(`Ably API error: ${response.status} - ${JSON.stringify(resJson)}`);
   }
 
-  return await response.json();
+  return resJson;
 }
 
-async function updateLiveObjectsForRecipients(recipients, roomId, messageText, senderId, messageTimestamp, hasReactions = false, reactionPreview = '', isReactionEvent = false) {
+async function updateLiveObjectsForRecipients(
+  recipients,
+  roomId,
+  messageText,
+  senderId,
+  messageTimestamp,
+  hasReactions = false,
+  reactionPreview = '',
+  isReactionEvent = false
+) {
   const ABLY_API_KEY = "ALwA2Q.4QI37w:D_h8yJGTdcH5Xp8ZB9d7Tt9Zbp7QjfuXTdAL3HLBV1Y";
   const timestamp = messageTimestamp ? messageTimestamp.toString() : Date.now().toString();
-  const DEBUG = process.env.DEBUG_ENABLED === 'true';
-  const log = DEBUG ? console.log : () => { };
 
-  console.log(`🚀 Processing ${recipients.length} recipients in parallel (isReactionEvent: ${isReactionEvent})`);
+  console.log(`🚀 Updating LiveObjects for ${recipients.length} recipients`);
+  console.log(`🚀 roomId=${roomId}, senderId=${senderId}, isReactionEvent=${isReactionEvent}`);
 
-  // Create message preview based on event type
   let messagePreview;
   if (isReactionEvent) {
-    // For reaction events, use the reaction preview format
     messagePreview = reactionPreview;
   } else {
-    // For regular messages, truncate and optionally add reactions
     messagePreview = messageText.length > 50 ? messageText.substring(0, 47) + '...' : messageText;
     if (hasReactions && reactionPreview && !isReactionEvent) {
       messagePreview = `${messagePreview} • ${reactionPreview}`;
     }
   }
 
-  // Group recipients by user to batch room existence checks
-  const uniqueUsers = [...new Set(recipients.map(r => r.trim()))];
+  console.log(`📌 Computed messagePreview: "${messagePreview}"`);
 
-  // Batch check room existence for all users in parallel
+  const uniqueUsers = [...new Set(recipients.map(r => r.trim()))];
+  console.log(`👥 Unique recipients: ${JSON.stringify(uniqueUsers)}`);
+
   const roomExistenceChecks = await Promise.allSettled(
     uniqueUsers.map(async (userId) => {
       const channelName = `roomslist:${userId}`;
       const url = `https://main.realtime.ably.net/channels/${encodeURIComponent(channelName)}/objects`;
 
+      console.log(`🔍 Checking room existence for ${userId} at ${url}/root`);
       try {
         const rootResponse = await fetch(`${url}/root`, {
           method: 'GET',
@@ -202,21 +200,19 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
           }
         });
 
-        if (!rootResponse.ok) {
-          return { userId, exists: false, url, error: `Status: ${rootResponse.status}` };
-        }
+        console.log(`⬅️ Root check status for ${userId}: ${rootResponse.status}`);
+        const rootData = await rootResponse.json().catch(() => ({}));
+        console.log(`⬅️ Root data for ${userId}: ${JSON.stringify(rootData, null, 2)}`);
 
-        const rootData = await rootResponse.json();
         const roomExists = !!rootData.map?.entries?.[roomId]?.data?.objectId;
-
         return { userId, exists: roomExists, url, rootData };
       } catch (error) {
+        console.error(`❌ Error checking room existence for ${userId}: ${error.message}`);
         return { userId, exists: false, url, error: error.message };
       }
     })
   );
 
-  // Create lookup map for room existence
   const roomExistenceMap = new Map();
   roomExistenceChecks.forEach((result) => {
     if (result.status === 'fulfilled') {
@@ -226,10 +222,11 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
     }
   });
 
-  // Process all recipients in parallel
   const updatePromises = recipients.map(async (recipientId) => {
     const trimmedId = recipientId.trim();
     const roomInfo = roomExistenceMap.get(trimmedId);
+
+    console.log(`📨 Starting LiveObjects update for ${trimmedId}`);
 
     if (!roomInfo) {
       console.error(`❌ No room info for recipient ${trimmedId}`);
@@ -238,10 +235,10 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
 
     try {
       if (roomInfo.exists) {
-        log(`📝 Updating existing room for recipient: ${trimmedId}`);
+        console.log(`📝 Room exists for ${trimmedId}, updating...`);
         return await updateExistingRoom(roomInfo.url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, trimmedId, isReactionEvent);
       } else {
-        log(`🏗️ Creating new room for recipient: ${trimmedId}`);
+        console.log(`🏗️ Room does NOT exist for ${trimmedId}, creating...`);
         return await createNewRoom(roomInfo.url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, trimmedId, isReactionEvent);
       }
     } catch (error) {
@@ -250,21 +247,19 @@ async function updateLiveObjectsForRecipients(recipients, roomId, messageText, s
     }
   });
 
-  // Wait for all updates to complete
   const results = await Promise.allSettled(updatePromises);
-
-  // Log summary
   const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
   const failed = results.length - successful;
 
-  console.log(`✅ Completed: ${successful} successful, ${failed} failed out of ${recipients.length} recipients`);
+  console.log(`✅ LiveObjects summary: ${successful} successful, ${failed} failed`);
 
-  if (failed > 0) {
-    const failures = results
-      .filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success))
-      .map(r => r.status === 'rejected' ? r.reason : r.value.error);
-    console.error('❌ Failures:', failures);
-  }
+  results.forEach((r) => {
+    if (r.status === 'fulfilled') {
+      console.log(`➡️ Recipient ${r.value.recipientId}: success=${r.value.success}, method=${r.value.method || 'unknown'}`);
+    } else {
+      console.log(`➡️ Recipient failed: ${r.reason}`);
+    }
+  });
 }
 
 // Optimized function to update existing room
@@ -404,25 +399,4 @@ async function createNewRoom(url, roomId, messagePreview, senderId, timestamp, r
   } catch (error) {
     return { recipientId, success: false, method: 'create', error: error.message };
   }
-}
-
-// Legacy function - kept for backward compatibility
-// NOTE: This function is deprecated in favor of the optimized createNewRoom function
-async function createLiveObjectForRecipient(recipientId, roomId, messagePreview, senderId, timestamp, recipients) {
-  console.log(`⚠️ Using legacy createLiveObjectForRecipient - consider updating to use createNewRoom`);
-
-  const ABLY_API_KEY = "ALwA2Q.4QI37w:D_h8yJGTdcH5Xp8ZB9d7Tt9Zbp7QjfuXTdAL3HLBV1Y";
-  const channelName = `roomslist:${recipientId.trim()}`;
-  const url = `https://main.realtime.ably.net/channels/${encodeURIComponent(channelName)}/objects`;
-
-  // Use the optimized createNewRoom function
-  const result = await createNewRoom(url, roomId, messagePreview, senderId, timestamp, recipients, ABLY_API_KEY, recipientId);
-
-  if (!result.success) {
-    console.error(`❌ Legacy room creation failed for ${recipientId}:`, result.error);
-  } else {
-    console.log(`✅ Legacy room creation succeeded for ${recipientId}`);
-  }
-
-  return result;
 }
