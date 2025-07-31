@@ -404,66 +404,8 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     console.log('Leave room:', roomName);
   }, []);
 
-  // Simplified: Just format message previews, avatars handled directly in components
-  const transformedRooms = useMemo(() => {
-    const transformed: Record<string, any> = {};
-
-    Object.entries(rooms).forEach(([roomId, roomData]) => {
-      // Parse sender name using profile data
-      let senderDisplayName = 'Someone';
-      if (roomData.latestMessageSender) {
-        if (roomData.latestMessageSender === userId ||
-          roomData.latestMessageSender === user?.fullName?.replace(/\s+/g, '_')) {
-          senderDisplayName = 'You';
-        } else {
-          // Extract clean user ID from client ID format
-          const extractUserIdFromClientId = (clientId: string): string => {
-            // Handle formats like "Jenny_Purcell.user_30HNK6nodPBeewpeNXEXs4D0wwR"
-            if (clientId.includes('.user_')) {
-              return clientId.split('.user_')[1];
-            }
-            return clientId;
-          };
-
-          const cleanSenderId = extractUserIdFromClientId(roomData.latestMessageSender);
-          const profileName = getUserName(cleanSenderId);
-
-          // If we got a meaningful profile name (not just the user ID), use it
-          if (profileName && profileName !== cleanSenderId) {
-            senderDisplayName = profileName;
-          } else {
-            // Fallback: extract first name from the original sender string
-            if (roomData.latestMessageSender.includes('.user_')) {
-              const namepart = roomData.latestMessageSender.split('.user_')[0];
-              if (namepart.includes('_')) {
-                senderDisplayName = namepart.split('_')[0];
-              } else {
-                senderDisplayName = namepart;
-              }
-            } else if (roomData.latestMessageSender.includes('_')) {
-              senderDisplayName = roomData.latestMessageSender.split('_')[0];
-            } else {
-              senderDisplayName = roomData.latestMessageSender;
-            }
-          }
-        }
-      }
-
-      // Format message preview
-      const messagePreview = roomData.latestMessagePreview ?
-        `${senderDisplayName}: ${roomData.latestMessagePreview}` :
-        'No messages yet';
-
-      transformed[roomId] = {
-        ...roomData,
-        // Format message preview with proper sender names
-        messagePreview,
-        latestMessagePreview: messagePreview
-      };
-    });
-
-    return transformed;
-  }, [rooms, userId, user?.fullName, getUserName]);
+  // Use rooms directly - let individual components handle formatting
+  const transformedRooms = rooms;
 
   // Memoize the sidebar props to prevent unnecessary re-renders
   const sidebarProps = useMemo(() => ({
