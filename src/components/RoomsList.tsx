@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useChannel, usePresenceListener } from 'ably/react';
 import { useUser } from '@clerk/clerk-react';
 import { Sidebar } from '../ably-ui-kits/components/molecules';
-import { useProfile } from '../contexts/ProfileContext';
+// import { useProfile } from '../contexts/ProfileContext';
 // import { useRoomParticipants } from '../hooks/useRoomParticipants';
 import { parseDMRoomId } from '../utils/roomId';
 import { UserProfileHeader } from './UserProfileHeader';
@@ -39,7 +39,7 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
   const [isLoading, setIsLoading] = useState(true);
   const { channel } = useChannel(`roomslist:${userId}`);
   const { user } = useUser();
-  const { getUserName } = useProfile();
+  // const { getUserName } = useProfile();
   // const { getRoomDisplayInfo } = useRoomParticipants();
   const { presenceData } = usePresenceListener('presence');
 
@@ -404,8 +404,41 @@ export const RoomsList: React.FC<RoomsListProps> = React.memo(({
     console.log('Leave room:', roomName);
   }, []);
 
-  // Use rooms directly - let individual components handle formatting
-  const transformedRooms = rooms;
+  // Format rooms with sender name prefix for message previews
+  const transformedRooms = useMemo(() => {
+    const transformed: Record<string, any> = {};
+
+    Object.entries(rooms).forEach(([roomId, roomData]) => {
+      // Format sender name
+      let senderDisplayName = 'Someone';
+      if (roomData.latestMessageSender) {
+        if (roomData.latestMessageSender.includes(`user_${userId}`) || 
+            roomData.latestMessageSender === user?.fullName?.replace(/\s+/g, '_')) {
+          senderDisplayName = 'You';
+        } else {
+          // Extract first name from clientId format like "Jenny_Purcell.user_30HNK6nodPBeewpeNXEXs4D0wwR"
+          if (roomData.latestMessageSender.includes('.')) {
+            const namepart = roomData.latestMessageSender.split('.')[0];
+            senderDisplayName = namepart.replace(/_/g, ' ');
+          } else {
+            senderDisplayName = roomData.latestMessageSender.replace(/user_\w+/, '').replace(/_/g, ' ').trim() || 'Someone';
+          }
+        }
+      }
+
+      // Format message preview with sender prefix
+      const messagePreview = roomData.latestMessagePreview ? 
+        `${senderDisplayName}: ${roomData.latestMessagePreview}` : 
+        'No messages yet';
+
+      transformed[roomId] = {
+        ...roomData,
+        latestMessagePreview: messagePreview
+      };
+    });
+
+    return transformed;
+  }, [rooms, userId, user?.fullName]);
 
   // Memoize the sidebar props to prevent unnecessary re-renders
   const sidebarProps = useMemo(() => ({

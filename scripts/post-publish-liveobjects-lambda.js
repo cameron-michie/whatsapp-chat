@@ -51,15 +51,26 @@ export const handler = async (event) => {
       let hasReactions = false;
       let isReactionEvent = false;
       let reactionPreview = '';
+      let actualSenderId = clientId; // Default to original message sender
 
       if (summary && summary['reaction:distinct.v1']) {
         hasReactions = true;
         const reactions = summary['reaction:distinct.v1'];
         if (action === 4 && hasReactions) {
           isReactionEvent = true;
-          const senderName = clientId.includes('.') ? clientId.split('.')[0].replace('_', ' ') : clientId;
+          
+          // For reaction events, find the actual reactor from the reactions summary
           const reactionEmojis = Object.keys(reactions);
           const latestEmoji = reactionEmojis[reactionEmojis.length - 1];
+          const latestReaction = reactions[latestEmoji];
+          
+          // Get the most recent reactor (last clientId in the array)
+          if (latestReaction.clientIds && latestReaction.clientIds.length > 0) {
+            actualSenderId = latestReaction.clientIds[latestReaction.clientIds.length - 1];
+            console.log(`Reaction event: actual reactor is ${actualSenderId}, not original sender ${clientId}`);
+          }
+          
+          const senderName = actualSenderId.includes('.') ? actualSenderId.split('.')[0].replace('_', ' ') : actualSenderId;
           const truncatedMessage = messageText.length > 30 ? messageText.substring(0, 27) + '...' : messageText;
           reactionPreview = ` reacted ${latestEmoji} to "${truncatedMessage}"`;
           console.log(`Detected reaction event: ${reactionPreview}`);
@@ -72,7 +83,8 @@ export const handler = async (event) => {
 
       console.log(`Parsed data:`, JSON.stringify(parsedData, null, 2));
       console.log(`Message text: "${messageText}"`);
-      console.log(`Sender (clientId): ${clientId}`);
+      console.log(`Original sender (clientId): ${clientId}`);
+      console.log(`Actual sender (for LiveObjects): ${actualSenderId}`);
       console.log(`Channel: ${channel}`);
 
       const roomId = channel.replace(/::?\$chat$/, '');
@@ -102,7 +114,7 @@ export const handler = async (event) => {
           recipients,
           roomId,
           messageText,
-          clientId,
+          actualSenderId, // Use actualSenderId which is the reactor for reaction events
           timestamp,
           hasReactions,
           reactionPreview,
